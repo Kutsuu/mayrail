@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Инфраструктура Первомайских железных дорог.">
+    <title>ПЖД | Инфраструктура</title>
+    <link rel="icon" href="assets/img/small.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Roboto+Condensed:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("mayrail-theme") || "light";
+      } catch (error) {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
+    <link rel="stylesheet" href="assets/css/mayrail.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html#top" aria-label="Главная страница">
+        <img src="assets/img/logo-compact.png" alt="Первомайские железные дороги">
+      </a>
+      <nav class="nav" id="primary-nav" aria-label="Основная навигация">
+        <a href="index.html#routes">Поиск</a>
+        <a href="news.html">Новости</a>
+        <a href="schedules.html">Расписания</a>
+        <a href="services.html">Услуги</a>
+        <a class="is-active" href="infrastructure.html">Инфраструктура</a>
+        <a href="about.html">О нас</a>
+        <a href="join.html">Присоединиться</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false">
+          <img class="theme-icon theme-icon-dark" src="assets/icons/dark-theme.svg" alt="" aria-hidden="true">
+          <img class="theme-icon theme-icon-light" src="assets/icons/light-theme.svg" alt="" aria-hidden="true">
+        </button>
+        <button class="menu-toggle" id="menu-toggle" type="button" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="page-hero section-dark">
+        <div class="container">
+          <p class="eyebrow">Для клиентов</p>
+          <h1>Инфраструктура</h1>
+        </div>
+      </section>
+
+      <section class="section page-section">
+        <div class="container stat-grid">
+          <article class="stat-card">
+            <span>Станций</span>
+            <strong>2</strong>
+          </article>
+          <article class="stat-card">
+            <span>Платформ</span>
+            <strong>8</strong>
+          </article>
+          <article class="stat-card">
+            <span>Километров путей</span>
+            <strong>x км</strong>
+          </article>
+          <article class="stat-card">
+            <span>Светофоров</span>
+            <strong>25</strong>
+          </article>
+          <article class="stat-card">
+            <span>Стрелочных переводов</span>
+            <strong>13</strong>
+          </article>
+          <article class="stat-card">
+            <span>Переездов/переходов</span>
+            <strong>3</strong>
+          </article>
+          <article class="stat-card">
+            <span>Информация</span>
+            <strong>x</strong>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <img src="assets/img/logo-wide.png" alt="Первомайские железные дороги">
+          <p>© 2026 «Первомайские железные дороги».</p>
+        </div>
+        <div class="footer-info" aria-label="Справочная информация">
+          <div class="footer-block">
+            <span>Период работы</span>
+            <strong>Отсутствует. Данные будут ближе к лету 2026.</strong>
+          </div>
+          <div class="footer-block">
+            <span>Часы работы</span>
+            <strong>ежедневно с 9:00 до 21:00</strong>
+          </div>
+          <div class="footer-block">
+            <span>Контактная информация</span>
+            <a class="footer-mail" href="mailto:info@mayrail.pro">
+              <img src="assets/icons/mail.svg" alt="" aria-hidden="true">
+              <span>info@mayrail.pro</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/js/theme.js"></script>
+  </body>
+</html>
