@@ -12,6 +12,15 @@ const resultsActions = document.querySelector("#results-actions");
 const loadMoreButton = document.querySelector("#load-more-routes");
 const cardTemplate = document.querySelector("#route-card-template");
 const swapButton = document.querySelector("#swap-stations");
+const scheduleDateInput = document.querySelector("#schedule-date");
+const scheduleDays = document.querySelector("#schedule-days");
+const scheduleTable = document.querySelector("#schedule-table");
+const scheduleTableShell = document.querySelector(".passenger-table-shell");
+const scheduleCustomDay = document.querySelector("#schedule-custom-day");
+const scheduleScrollPrev = document.querySelector("#schedule-scroll-prev");
+const scheduleScrollNext = document.querySelector("#schedule-scroll-next");
+const scheduleEmpty = document.querySelector("#schedule-empty");
+const stationMap = document.querySelector("#station-map");
 const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
 
 const INITIAL_RESULTS_LIMIT = 3;
@@ -22,6 +31,11 @@ let routeData = { routes: [] };
 let stations = [];
 let currentMatches = [];
 let visibleResultsLimit = INITIAL_RESULTS_LIMIT;
+let selectedScheduleDateValue = "";
+let scheduleCustomDateActive = false;
+let isScheduleDragging = false;
+let scheduleDragStartX = 0;
+let scheduleDragStartScroll = 0;
 
 const stationPickers = new Map([
   [fromInput, { list: fromOptions, activeIndex: 0, forceAll: false }],
@@ -39,6 +53,7 @@ async function init() {
   try {
     routeData = await loadRouteData();
     hydrateStations(routeData.routes);
+    renderPassengerTools();
     if (applySearchParams() && !isRedirectSearch) {
       runSearch();
     }
@@ -49,31 +64,15 @@ async function init() {
 }
 
 async function loadRouteData() {
-  const source = window.MAYRAIL_DATA_URL || routeForm.dataset.routesSource || "data/routes.csv";
+  const source = routeForm.dataset.routesSource || "data/routes.csv";
+  const response = await fetch(source, { cache: "no-store" });
+  const text = await response.text();
 
-  try {
-    const response = await fetch(source, { cache: "no-store" });
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`Data request failed: ${response.status}`);
-    }
-
-    return csvToRouteData(text);
-  } catch (error) {
-    const inlineCsv = getInlineRouteCsv();
-
-    if (inlineCsv) {
-      return csvToRouteData(inlineCsv);
-    }
-
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Data request failed: ${response.status}`);
   }
-}
 
-function getInlineRouteCsv() {
-  const inlineSource = document.querySelector("#routes-csv-fallback");
-  return inlineSource?.textContent?.trim() || "";
+  return csvToRouteData(text);
 }
 
 function csvToRouteData(csv) {
@@ -773,6 +772,206 @@ function updateLoadMoreButton() {
   loadMoreButton.textContent = "Показать ещё";
 }
 
+function renderPassengerTools() {
+  renderScheduleDays();
+  renderScheduleTable();
+  renderStationMap();
+}
+
+function renderScheduleTable() {
+  if (!scheduleTable) return;
+
+  const selectedDate = getSelectedScheduleDate();
+  const schedule = buildScheduleMatrix(selectedDate);
+  const hasRows = schedule.trains.length && schedule.stations.length;
+
+  scheduleTable.innerHTML = hasRows ? renderScheduleMatrix(schedule) : "";
+
+  if (scheduleTableShell) {
+    scheduleTableShell.hidden = !hasRows;
+  }
+
+  if (scheduleEmpty) {
+    scheduleEmpty.hidden = hasRows;
+  }
+
+  updateScheduleScrollButtons();
+}
+
+function renderScheduleDays() {
+  if (!scheduleDays) return;
+
+  const selectedValue = selectedScheduleDateValue || formatInputDate(getSelectedScheduleDate());
+  const today = new Date();
+  const firstDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Array.from({ length: 2 }, (_, index) => {
+    const date = new Date(firstDate);
+    date.setDate(firstDate.getDate() + index);
+    return date;
+  });
+
+  scheduleDays.innerHTML = days.map((date) => {
+    const value = formatInputDate(date);
+    return `
+      <button class="schedule-day ${!scheduleCustomDateActive && value === selectedValue ? "is-active" : ""}" type="button" data-date="${value}">
+        <span>${escapeHtml(formatWeekday(date))}</span>
+        <strong>${escapeHtml(formatDayMonth(date))}</strong>
+      </button>
+    `;
+  }).join("");
+
+  scheduleCustomDay?.classList.toggle("is-active", scheduleCustomDateActive);
+}
+
+function getSelectedScheduleDate() {
+  if (selectedScheduleDateValue) {
+    return getDateFromInput({ value: selectedScheduleDateValue });
+  }
+
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+function buildScheduleMatrix(selectedDate) {
+  const stations = getStationMapStations(routeData.routes);
+  const trains = routeData.routes
+    .flatMap((route) => route.trips
+      .filter((trip) => tripRunsOnDate(trip, selectedDate))
+      .map((trip) => ({
+        route,
+        trip,
+        direction: getScheduleTrainDirection(route, stations)
+      })))
+    .sort((a, b) => sortScheduleTrains(a, b, stations));
+
+  return { stations, trains };
+}
+
+function getScheduleTrainDirection(route, stations) {
+  const normalizedStations = stations.map(normalizeStation);
+  const startIndex = normalizedStations.indexOf(normalizeStation(route.stops[0]));
+  const endIndex = normalizedStations.indexOf(normalizeStation(route.stops.at(-1)));
+
+  if (startIndex === -1 || endIndex === -1) return "down";
+  return startIndex <= endIndex ? "down" : "up";
+}
+
+function sortScheduleTrains(a, b, stations) {
+  const timeOrder = timeToMinutes(a.trip.depart) - timeToMinutes(b.trip.depart);
+  if (timeOrder) return timeOrder;
+
+  const aStart = getStationIndex(stations, a.route.stops[0]);
+  const bStart = getStationIndex(stations, b.route.stops[0]);
+  return aStart - bStart;
+}
+
+function getStationIndex(stations, station) {
+  return stations.findIndex((item) => normalizeStation(item) === normalizeStation(station));
+}
+
+function renderScheduleMatrix(schedule) {
+  return `
+    <table class="schedule-direction-table">
+      <thead>
+        <tr class="schedule-number-row">
+          <th class="schedule-station-cell"></th>
+          ${schedule.trains.map((train) => `
+            <th class="schedule-train-head">${train.direction === "down" ? escapeHtml(train.route.line) : ""}</th>
+          `).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${schedule.stations.map((station) => `
+          <tr>
+            <th class="schedule-station-cell ${isPrimaryStation(station) ? "is-primary" : ""}">${escapeHtml(station)}</th>
+            ${schedule.trains.map(({ route, trip }) => renderScheduleTimeCell(route, trip, station)).join("")}
+          </tr>
+        `).join("")}
+      </tbody>
+      <tfoot>
+        <tr class="schedule-number-row">
+          <th class="schedule-station-cell"></th>
+          ${schedule.trains.map((train) => `
+            <th class="schedule-train-head">${train.direction === "up" ? escapeHtml(train.route.line) : ""}</th>
+          `).join("")}
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+function renderScheduleTimeCell(route, trip, station) {
+  const servesStation = route.stops.some((stop) => normalizeStation(stop) === normalizeStation(station));
+  const time = servesStation ? getTripStationTime(trip, station) : "";
+
+  if (!time) {
+    return '<td class="schedule-time-cell schedule-empty-cell"></td>';
+  }
+
+  return `<td class="schedule-time-cell"><time>${escapeHtml(time)}</time></td>`;
+}
+
+function getTripStationTime(trip, station) {
+  return trip.departureTimes?.[station] || trip.arrivalTimes?.[station] || trip.stopTimes?.[station] || "";
+}
+
+function isPrimaryStation(station) {
+  return normalizeStation(station) === "первомайск";
+}
+
+function renderStationMap() {
+  if (!stationMap) return;
+
+  const orderedStations = getStationMapStations(routeData.routes);
+  stationMap.innerHTML = orderedStations.map((station, index) => `
+    <li class="station-map-item">
+      <span class="station-map-track" aria-hidden="true">
+        <span class="station-map-dot"></span>
+      </span>
+      <span class="station-map-name">${escapeHtml(station)}</span>
+      <span class="station-map-number">${String(index + 1).padStart(2, "0")}</span>
+    </li>
+  `).join("");
+}
+
+function getStationMapStations(routes) {
+  const primaryRoute = [...routes].sort((a, b) => b.stops.length - a.stops.length)[0];
+  const orderedStations = primaryRoute ? [...primaryRoute.stops] : [];
+
+  routes.forEach((route) => {
+    route.stops.forEach((station) => {
+      if (!orderedStations.some((item) => normalizeStation(item) === normalizeStation(station))) {
+        orderedStations.push(station);
+      }
+    });
+  });
+
+  return orderedStations;
+}
+
+function tripRunsOnDate(trip, date) {
+  if (!runsOnDateValue(trip.days, date)) return false;
+
+  const departureDateTime = getDateTimeForDate(date, trip.depart);
+
+  if (trip.periodStart && departureDateTime < trip.periodStart) return false;
+  if (trip.periodEnd && departureDateTime > trip.periodEnd) return false;
+
+  return true;
+}
+
+function runsOnDateValue(days, date) {
+  const value = String(days || "daily").toLowerCase();
+  if (value === "daily" || value === "ежедневно") return true;
+
+  const day = date.getDay();
+  const isWeekend = day === 0 || day === 6;
+
+  if (value === "weekdays" || value === "будни") return !isWeekend;
+  if (value === "weekends" || value === "выходные") return isWeekend;
+  return true;
+}
+
 function findRouteMatches(from, to, time, timeMode, dateOffset) {
   return routeData.routes
     .flatMap((route) => buildRouteMatches(route, from, to, time, timeMode, dateOffset))
@@ -785,7 +984,7 @@ function buildSearchParams() {
   const values = {
     from: fromInput.value.trim(),
     to: toInput.value.trim(),
-    date: dateInput.value,
+    date: getDisplayDateValue(dateInput),
     time: timeInput.value,
     timeMode: getTimeMode()
   };
@@ -807,7 +1006,7 @@ function applySearchParams() {
 
   if (from) fromInput.value = from;
   if (to) toInput.value = to;
-  if (date) dateInput.value = date;
+  if (date) dateInput.value = getDisplayDateValue({ value: date }) || date;
   if (time) timeInput.value = time;
 
   const selectedTimeMode = timeModeInputs.find((input) => input.value === timeMode);
@@ -820,7 +1019,14 @@ function applySearchParams() {
 function redirectToSearchPage() {
   const target = routeForm.dataset.resultsPage || "search.html";
   const params = buildSearchParams();
-  window.location.href = `${target}?${params.toString()}`;
+  const destination = `${target}?${params.toString()}`;
+
+  if (window.MayrailPageTransition?.navigate) {
+    window.MayrailPageTransition.navigate(destination);
+    return;
+  }
+
+  window.location.href = destination;
 }
 
 function updateSearchUrl() {
@@ -950,14 +1156,17 @@ function renderTripDates(node, match) {
   selectedDate.setDate(selectedDate.getDate() + (match.dateOffset || 0));
   const departMinutes = timeToMinutes(match.depart);
   const arriveMinutes = timeToMinutes(match.arrive);
-  const departDate = getDateForTripTime(selectedDate, departMinutes);
   const arriveDate = getDateForTripTime(selectedDate, arriveMinutes);
 
   if (arriveMinutes % 1440 < departMinutes % 1440 && arriveMinutes < 1440) {
     arriveDate.setDate(arriveDate.getDate() + 1);
   }
 
-  renderTripDateLabel(node.querySelector('[data-field="depart-date"]'), departDate, false);
+  const departDateLabel = node.querySelector('[data-field="depart-date"]');
+  if (departDateLabel) {
+    departDateLabel.hidden = true;
+    departDateLabel.textContent = "";
+  }
   renderTripDateLabel(node.querySelector('[data-field="arrive-date"]'), arriveDate, true);
 }
 
@@ -986,6 +1195,93 @@ function formatShortDate(date) {
     String(date.getDate()).padStart(2, "0"),
     String(date.getMonth() + 1).padStart(2, "0"),
     date.getFullYear()
+  ].join(".");
+}
+
+function formatInputDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function formatDisplayDate(date) {
+  return [
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    date.getFullYear()
+  ].join(".");
+}
+
+function parseInputDateValue(value) {
+  const text = String(value || "").trim();
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const displayMatch = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+
+  if (isoMatch) {
+    return createValidatedDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+  }
+
+  if (displayMatch) {
+    return createValidatedDate(Number(displayMatch[3]), Number(displayMatch[2]), Number(displayMatch[1]));
+  }
+
+  return null;
+}
+
+function createValidatedDate(year, month, day) {
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function getDisplayDateValue(input) {
+  const date = parseInputDateValue(input?.value);
+  return date ? formatDisplayDate(date) : "";
+}
+
+function getInternalDateValue(input) {
+  const date = parseInputDateValue(input?.value);
+  return date ? formatInputDate(date) : "";
+}
+
+function formatDateTyping(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+  const parts = [
+    digits.slice(0, 2),
+    digits.slice(2, 4),
+    digits.slice(4, 8)
+  ].filter(Boolean);
+
+  return parts.join(".");
+}
+
+function normalizeDateInput(input, fallbackDate = new Date()) {
+  if (!input) return fallbackDate;
+
+  const parsedDate = parseInputDateValue(input.value) || fallbackDate;
+  input.value = formatDisplayDate(parsedDate);
+  return parsedDate;
+}
+
+function formatWeekday(date) {
+  return new Intl.DateTimeFormat("ru-RU", { weekday: "short" })
+    .format(date)
+    .replace(".", "");
+}
+
+function formatDayMonth(date) {
+  return [
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getMonth() + 1).padStart(2, "0")
   ].join(".");
 }
 
@@ -1084,28 +1380,39 @@ function clearResults() {
 
 function setCurrentDateTime() {
   const now = new Date();
-  dateInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const today = formatInputDate(now);
+  const customDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+  dateInput.value = formatDisplayDate(now);
+  selectedScheduleDateValue = today;
+  if (scheduleDateInput) scheduleDateInput.value = formatDisplayDate(customDate);
   timeInput.value = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
 function getSelectedDate() {
-  const match = String(dateInput.value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return getDateFromInput(dateInput);
+}
 
-  if (match) {
-    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  }
+function getDateFromInput(input) {
+  const value = input?.value || "";
+  const parsedDate = parseInputDateValue(value);
+  if (parsedDate) return parsedDate;
 
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-function getSelectedDateTime(time, dateOffset = 0) {
-  const date = getSelectedDate();
-  date.setDate(date.getDate() + dateOffset);
+function getDateTimeForDate(date, time) {
   const minutes = timeToMinutes(time);
   const hours = Math.floor(minutes / 60);
 
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes % 60);
+}
+
+function getSelectedDateTime(time, dateOffset = 0) {
+  const date = getSelectedDate();
+  date.setDate(date.getDate() + dateOffset);
+
+  return getDateTimeForDate(date, time);
 }
 
 function getTimeMode() {
@@ -1113,12 +1420,65 @@ function getTimeMode() {
 }
 
 function updateTimeModeLabel() {
-  timeLabel.textContent = getTimeMode() === "arrive" ? "До" : "После";
+  const mode = getTimeMode();
+  timeLabel.textContent = mode === "arrive" ? "До" : "После";
+  document.querySelector("#time-mode")?.style.setProperty("--time-mode-index", mode === "arrive" ? "1" : "0");
 }
 
 function syncTimeModeLabel() {
   updateTimeModeLabel();
   clearResults();
+}
+
+function syncScheduleDate() {
+  renderScheduleDays();
+  renderScheduleTable();
+}
+
+function scrollSchedule(direction) {
+  if (!scheduleTableShell) return;
+
+  const distance = Math.max(260, scheduleTableShell.clientWidth * 0.82);
+  scheduleTableShell.scrollBy({
+    left: direction * distance,
+    behavior: "smooth"
+  });
+}
+
+function updateScheduleScrollButtons() {
+  if (!scheduleTableShell || !scheduleScrollPrev || !scheduleScrollNext) return;
+
+  const maxScroll = Math.max(0, scheduleTableShell.scrollWidth - scheduleTableShell.clientWidth);
+  const hasOverflow = maxScroll > 4;
+  const currentScroll = scheduleTableShell.scrollLeft;
+
+  scheduleScrollPrev.disabled = !hasOverflow || currentScroll <= 4;
+  scheduleScrollNext.disabled = !hasOverflow || currentScroll >= maxScroll - 4;
+}
+
+function startScheduleDrag(event) {
+  if (!scheduleTableShell || event.button !== 0) return;
+
+  isScheduleDragging = true;
+  scheduleDragStartX = event.clientX;
+  scheduleDragStartScroll = scheduleTableShell.scrollLeft;
+  scheduleTableShell.classList.add("is-dragging");
+  scheduleTableShell.setPointerCapture?.(event.pointerId);
+}
+
+function moveScheduleDrag(event) {
+  if (!isScheduleDragging || !scheduleTableShell) return;
+
+  const delta = event.clientX - scheduleDragStartX;
+  scheduleTableShell.scrollLeft = scheduleDragStartScroll - delta;
+}
+
+function stopScheduleDrag(event) {
+  if (!isScheduleDragging || !scheduleTableShell) return;
+
+  isScheduleDragging = false;
+  scheduleTableShell.classList.remove("is-dragging");
+  scheduleTableShell.releasePointerCapture?.(event.pointerId);
 }
 
 function isKnownStation(value) {
@@ -1165,6 +1525,7 @@ routeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   hideStationOptions(fromInput);
   hideStationOptions(toInput);
+  normalizeDateInput(dateInput);
 
   if (isRedirectSearch) {
     redirectToSearchPage();
@@ -1187,6 +1548,45 @@ loadMoreButton.addEventListener("click", () => {
   renderRouteResults();
 });
 
+dateInput.addEventListener("input", () => {
+  dateInput.value = formatDateTyping(dateInput.value);
+  clearResults();
+});
+dateInput.addEventListener("blur", () => {
+  normalizeDateInput(dateInput);
+});
 dateInput.addEventListener("change", clearResults);
 timeInput.addEventListener("change", clearResults);
 timeModeInputs.forEach((input) => input.addEventListener("change", syncTimeModeLabel));
+scheduleDateInput?.addEventListener("focus", () => {
+  scheduleCustomDateActive = true;
+  selectedScheduleDateValue = getInternalDateValue(scheduleDateInput) || selectedScheduleDateValue;
+  syncScheduleDate();
+});
+scheduleDateInput?.addEventListener("input", () => {
+  scheduleDateInput.value = formatDateTyping(scheduleDateInput.value);
+});
+scheduleDateInput?.addEventListener("change", () => {
+  scheduleCustomDateActive = true;
+  const date = normalizeDateInput(scheduleDateInput, getSelectedScheduleDate());
+  selectedScheduleDateValue = formatInputDate(date);
+  syncScheduleDate();
+});
+scheduleDays?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-date]");
+  if (!button) return;
+
+  scheduleCustomDateActive = false;
+  selectedScheduleDateValue = button.dataset.date;
+  syncScheduleDate();
+});
+
+scheduleScrollPrev?.addEventListener("click", () => scrollSchedule(-1));
+scheduleScrollNext?.addEventListener("click", () => scrollSchedule(1));
+scheduleTableShell?.addEventListener("scroll", updateScheduleScrollButtons, { passive: true });
+scheduleTableShell?.addEventListener("pointerdown", startScheduleDrag);
+scheduleTableShell?.addEventListener("pointermove", moveScheduleDrag);
+scheduleTableShell?.addEventListener("pointerup", stopScheduleDrag);
+scheduleTableShell?.addEventListener("pointercancel", stopScheduleDrag);
+scheduleTableShell?.addEventListener("pointerleave", stopScheduleDrag);
+window.addEventListener("resize", updateScheduleScrollButtons);

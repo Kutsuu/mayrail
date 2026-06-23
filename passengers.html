@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Первомайские железные дороги: маршруты, расписания и информация для пассажиров.">
-    <title>ПЖД | Главная</title>
+    <meta name="description" content="Поиск маршрутов, расписание поездов и станции Первомайских железных дорог.">
+    <title>ПЖД | Пассажирам</title>
     <link rel="icon" href="assets/img/small.png" type="image/png">
     <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin>
@@ -27,15 +27,16 @@
     <div data-site-header></div>
 
     <main id="top">
-      <section class="hero hero-with-search section-dark" id="routes">
-        <div class="hero-media" aria-hidden="true">
-          <img src="assets/img/homepage.jpg" alt="" draggable="false">
-        </div>
-        <div class="container hero-grid hero-search-grid">
-          <div class="hero-copy">
-            <h1>На колесах проще,<br>чем на руках.</h1>
+      <section class="section passenger-search-section" id="routes">
+        <div class="container">
+          <div class="page-back-row">
+            <a class="page-back" href="index.html">Назад</a>
           </div>
-          <form class="route-panel route-search-panel hero-search-panel" id="route-search" data-routes-source="data/routes.csv" data-search-mode="redirect" data-results-page="passengers.html">
+          <div class="passenger-page-title">
+            <h1>Пассажирам</h1>
+          </div>
+
+          <form class="route-panel route-search-panel search-page-panel passenger-search-panel" id="route-search" action="passengers.html" method="get" data-routes-source="data/routes.csv">
             <div class="field-grid">
               <label class="field station-field route-from">
                 <span class="sr-only">Откуда</span>
@@ -85,16 +86,42 @@
         </div>
       </section>
 
-      <section class="section news-section" id="news">
-        <div class="container section-head section-head-row">
-          <div>
-            <h2>Новости</h2>
-          </div>
-          <a class="button button-light" href="news.html">Все новости</a>
-        </div>
-        <div class="container news-grid" data-news-list data-news-limit="3"></div>
-      </section>
+      <section class="section passenger-tools-section">
+        <div class="container passenger-stack">
+          <section class="passenger-card schedule-card" aria-labelledby="schedule-title">
+            <div class="passenger-section-head">
+              <h2 id="schedule-title">Расписание</h2>
+            </div>
+            <div class="schedule-controls">
+              <span class="schedule-controls-label">Дата</span>
+              <div class="schedule-controls-row">
+                <div class="schedule-date-options">
+                  <div class="schedule-days" id="schedule-days" aria-label="Выбор дня"></div>
+                  <label class="schedule-day schedule-custom-day" id="schedule-custom-day">
+                    <span>Своя дата</span>
+                    <input id="schedule-date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="ДД.ММ.ГГГГ">
+                  </label>
+                </div>
+                <div class="schedule-scroll-actions" aria-label="Быстрое листание расписания">
+                  <button class="schedule-scroll-button schedule-scroll-prev" id="schedule-scroll-prev" type="button" aria-label="Прокрутить расписание влево"></button>
+                  <button class="schedule-scroll-button schedule-scroll-next" id="schedule-scroll-next" type="button" aria-label="Прокрутить расписание вправо"></button>
+                </div>
+              </div>
+            </div>
+            <div class="table-shell passenger-table-shell">
+              <div class="schedule-matrix" id="schedule-table"></div>
+            </div>
+            <div class="empty-state schedule-empty" id="schedule-empty" hidden>На выбранную дату поездов не найдено.</div>
+          </section>
 
+          <section class="passenger-card station-map-card" aria-labelledby="stations-title">
+            <div class="passenger-section-head">
+              <h2 id="stations-title">Станции</h2>
+            </div>
+            <ol class="station-map" id="station-map"></ol>
+          </section>
+        </div>
+      </section>
     </main>
 
     <div data-site-footer></div>
@@ -129,10 +156,8 @@
       </article>
     </template>
 
-    <script src="data/news.js"></script>
     <script src="assets/js/layout.js"></script>
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/app.js"></script>
-    <script src="assets/js/news.js"></script>
   </body>
 </html>

@@ -6,12 +6,17 @@
     <meta name="description" content="Поиск маршрутов Первомайских железных дорог.">
     <title>ПЖД | Поиск</title>
     <link rel="icon" href="assets/img/small.png" type="image/png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Roboto+Condensed:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19a7DRs5.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19K7DQ.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="assets/css/fonts.css">
     <script>
       try {
         document.documentElement.dataset.theme = localStorage.getItem("mayrail-theme") || "light";
+        if (sessionStorage.getItem("mayrail-page-transition") === "1") {
+          document.documentElement.classList.add("is-page-transition-pending");
+        }
       } catch (error) {
         document.documentElement.dataset.theme = "light";
       }
@@ -19,42 +24,18 @@
     <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="index.html#top" aria-label="Главная страница">
-        <img src="assets/img/logo-compact.png" alt="Первомайские железные дороги">
-      </a>
-      <nav class="nav" id="primary-nav" aria-label="Основная навигация">
-        <a class="is-active" href="search.html">Поиск</a>
-        <a href="news.html">Новости</a>
-        <a href="schedules.html">Расписания</a>
-        <a href="services.html">Услуги</a>
-        <a href="infrastructure.html">Инфраструктура</a>
-        <a href="about.html">О нас</a>
-        <a href="join.html">Присоединиться</a>
-      </nav>
-      <div class="header-actions">
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false">
-          <img class="theme-icon theme-icon-dark" src="assets/icons/dark-theme.svg" alt="" aria-hidden="true">
-          <img class="theme-icon theme-icon-light" src="assets/icons/light-theme.svg" alt="" aria-hidden="true">
-        </button>
-        <button class="menu-toggle" id="menu-toggle" type="button" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
-    </header>
+    <div data-site-header></div>
 
     <main id="top">
       <section class="section search-page-section" id="routes">
         <div class="container">
           <div class="page-back-row">
-            <a class="page-back" href="index.html#routes">Назад</a>
+            <a class="page-back" href="index.html">Назад</a>
           </div>
           <form class="route-panel route-search-panel search-page-panel" id="route-search" action="search.html" method="get" data-routes-source="data/routes.csv">
             <div class="field-grid">
               <label class="field station-field route-from">
-                <span>Откуда</span>
+                <span class="sr-only">Откуда</span>
                 <input id="from" name="from" autocomplete="off" placeholder="Откуда" aria-autocomplete="list" aria-expanded="false" aria-controls="from-options" required>
                 <div class="station-options" id="from-options" role="listbox" hidden></div>
               </label>
@@ -62,16 +43,18 @@
                 <img src="assets/icons/switch.svg" alt="" aria-hidden="true">
               </button>
               <label class="field station-field route-to">
-                <span>Куда</span>
+                <span class="sr-only">Куда</span>
                 <input id="to" name="to" autocomplete="off" placeholder="Куда" aria-autocomplete="list" aria-expanded="false" aria-controls="to-options" required>
                 <div class="station-options" id="to-options" role="listbox" hidden></div>
               </label>
               <label class="field route-date">
                 <span>Дата</span>
-                <input id="date" name="date" type="date">
+                <input id="date" name="date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="ДД.ММ.ГГГГ">
+                <img class="field-control-icon" src="assets/icons/calendar.svg" alt="" aria-hidden="true">
               </label>
               <fieldset class="field time-mode-field route-time-mode">
-                <legend>Режим времени</legend>
+                <legend class="sr-only">Режим времени</legend>
+                <span class="time-mode-title" aria-hidden="true">Режим времени</span>
                 <div class="segmented-control" id="time-mode">
                   <label>
                     <input type="radio" name="timeMode" value="depart" checked>
@@ -86,6 +69,7 @@
               <label class="field route-time">
                 <span id="time-label">После</span>
                 <input id="time" name="time" type="time" value="09:00">
+                <img class="field-control-icon" src="assets/icons/clock.svg" alt="" aria-hidden="true">
               </label>
               <button class="button button-primary route-submit" type="submit">Найти</button>
             </div>
@@ -99,31 +83,7 @@
       </section>
     </main>
 
-    <footer class="footer">
-      <div class="container footer-grid">
-        <div class="footer-brand">
-          <img src="assets/img/logo-wide.png" alt="Первомайские железные дороги">
-          <p>© 2026 «Первомайские железные дороги».</p>
-        </div>
-        <div class="footer-info" aria-label="Справочная информация">
-          <div class="footer-block">
-            <span>Период работы</span>
-            <strong>Отсутствует. Данные будут ближе к лету 2026.</strong>
-          </div>
-          <div class="footer-block">
-            <span>Часы работы</span>
-            <strong>ежедневно с 9:00 до 21:00</strong>
-          </div>
-          <div class="footer-block">
-            <span>Контактная информация</span>
-            <a class="footer-mail" href="mailto:info@mayrail.pro">
-              <img src="assets/icons/mail.svg" alt="" aria-hidden="true">
-              <span>info@mayrail.pro</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </footer>
+    <div data-site-footer></div>
 
     <template id="route-card-template">
       <article class="route-card">
@@ -155,39 +115,7 @@
       </article>
     </template>
 
-    <script>
-      window.MAYRAIL_DATA_URL = "data/routes.csv";
-    </script>
-    <script type="text/plain" id="routes-csv-fallback">
-,,,,,,,,,,,,,,
-,,,,,,,,,,,,,,
-От,17.05.2026 0:00:00,,,,,,,,,,,,,
-До,21.05.2026 0:00,,,,,,,,,,,,,
-,,,,,,,,,,,,,,
-Предупреждение,Номер поезда,Маршрут,Колодец,,Песочница,,Парник,,Первомайск,,Компост,,Смородина,
-,,,Приб.,Отпр.,Приб.,Отпр.,Приб.,Отпр.,Приб.,Отпр.,Приб.,Отпр.,Приб.,Отпр.
-,6001,Колодец - Первомайск - Смородина,,9:15,9:16,9:16,9:17,9:17,9:18,9:18,9:19,9:19,9:20,
-,6003,Колодец - Первомайск - Смородина,,10:30,10:31,10:31,10:32,10:32,10:33,10:33,10:34,10:34,10:35,
-,6005,Колодец - Первомайск - Смородина,,11:45,11:46,11:46,11:47,11:47,11:48,11:48,11:49,11:49,11:50,
-,6007,Колодец - Первомайск - Смородина,,13:00,13:01,13:01,13:02,13:02,13:03,13:03,13:04,13:04,13:05,
-,6009,Колодец - Первомайск - Смородина,,14:15,14:16,14:16,14:17,14:17,14:18,14:18,14:19,14:19,14:20,
-,6011,Колодец - Первомайск - Смородина,,15:30,15:31,15:31,15:32,15:32,15:33,15:33,15:34,15:34,15:35,
-,6013,Колодец - Первомайск - Смородина,,16:45,16:46,16:46,16:47,16:47,16:48,16:48,16:49,16:49,16:50,
-,6015,Колодец - Первомайск - Смородина,,18:00,18:01,18:01,18:02,18:02,18:03,18:03,18:04,18:04,18:05,
-,6017,Колодец - Первомайск - Смородина,,19:15,19:16,19:16,19:17,19:17,19:18,19:18,19:19,19:19,19:20,
-Это последний поезд на сегодня.,6019,Колодец - Первомайск - Смородина,,20:30,20:31,20:31,20:32,20:32,20:33,20:33,20:34,20:34,20:35,
-,,,,,,,,,,,,,,
-,6002,Смородина - Первомайск - Колодец,,9:22,9:23,9:23,9:24,9:24,9:25,9:25,9:26,9:26,9:27,
-,6004,Смородина - Первомайск - Колодец,,10:37,10:38,10:38,10:39,10:39,10:40,10:40,10:41,10:41,10:42,
-,6006,Смородина - Первомайск - Колодец,,11:52,11:53,11:53,11:54,11:54,11:55,11:55,11:56,11:56,11:57,
-,6008,Смородина - Первомайск - Колодец,,13:07,13:08,13:08,13:09,13:09,13:10,13:10,13:11,13:11,13:12,
-,6010,Смородина - Первомайск - Колодец,,14:22,14:23,14:23,14:24,14:24,14:25,14:25,14:26,14:26,14:27,
-,6012,Смородина - Первомайск - Колодец,,15:37,15:38,15:38,15:39,15:39,15:40,15:40,15:41,15:41,15:42,
-,6014,Смородина - Первомайск - Колодец,,16:52,16:53,16:53,16:54,16:54,16:55,16:55,16:56,16:56,16:57,
-,6016,Смородина - Первомайск - Колодец,,18:07,18:08,18:08,18:09,18:09,18:10,18:10,18:11,18:11,18:12,
-,6018,Смородина - Первомайск - Колодец,,19:22,19:23,19:23,19:24,19:24,19:25,19:25,19:26,19:26,19:27,
-Это последний поезд на сегодня.,6020,Смородина - Первомайск - Колодец,,20:37,20:38,20:38,20:39,20:39,20:40,20:40,20:41,20:41,20:42,
-    </script>
+    <script src="assets/js/layout.js"></script>
     <script src="assets/js/theme.js"></script>
     <script src="assets/js/app.js"></script>
   </body>
