@@ -18,4 +18,4 @@ node local-server.js
 http://localhost:8000/
 ```
 
-Так сайт сможет читать `data/routes.csv` напрямую, как на GitHub Pages.
+Так сайт сможет читать расписания из `data/routes/manifest.json` и CSV-файлов в `data/routes/`, как на GitHub Pages.

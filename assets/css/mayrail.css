@@ -5,14 +5,16 @@
   --color-navy-2: #1e2d43;
   --color-paper: #f9f9f9;
   --color-line: #e9eaec;
+  --color-section-soft: #f1f3f5;
   --color-white: #ffffff;
   --color-muted: rgba(28, 28, 28, 0.68);
   --color-soft: rgba(233, 234, 236, 0.72);
   --color-good: #2f8f5b;
-  --shadow-soft: 0 18px 50px rgba(27, 42, 65, 0.14);
-  --shadow-surface: 0 14px 34px rgba(27, 42, 65, 0.1);
-  --shadow-control: 0 8px 18px rgba(27, 42, 65, 0.09);
-  --shadow-control-hover: 0 12px 26px rgba(27, 42, 65, 0.14);
+  --shadow-soft: 0 10px 24px rgba(27, 42, 65, 0.08);
+  --shadow-surface: 0 8px 18px rgba(27, 42, 65, 0.07);
+  --shadow-raised: 0 12px 26px rgba(27, 42, 65, 0.1);
+  --shadow-control: 0 4px 10px rgba(27, 42, 65, 0.06);
+  --shadow-control-hover: 0 7px 16px rgba(27, 42, 65, 0.09);
   --radius: 8px;
   --radius-small: 6px;
   --container: 1280px;
@@ -21,6 +23,12 @@
   --font-head: "Manrope", Arial, sans-serif;
   --font-body: "Roboto Condensed", Arial, sans-serif;
   --header-offset: 76px;
+  --motion-fast: 220ms;
+  --motion-base: 280ms;
+  --motion-medium: 420ms;
+  --motion-slow: 680ms;
+  --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.82, 0.22, 1);
 }
 
 * {
@@ -89,13 +97,13 @@ body,
 .route-stop-timeline,
 .table-shell,
 .footer {
-  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  transition: background-color var(--motion-base) var(--ease-smooth), color var(--motion-base) var(--ease-smooth), border-color var(--motion-base) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth);
 }
 
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -106,7 +114,7 @@ body,
 @keyframes soft-pop {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.98);
+    transform: translateY(-5px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -126,7 +134,7 @@ body,
 @keyframes reveal-down {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
@@ -137,7 +145,7 @@ body,
 @keyframes nav-item-in {
   from {
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-6px);
   }
   to {
     opacity: 1;
@@ -223,7 +231,7 @@ p {
   display: block;
   width: 100%;
   height: 3px;
-  margin-top: 8px;
+  margin-top: 12px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-navy), rgba(27, 42, 65, 0));
 }
@@ -284,7 +292,7 @@ p {
 
 .site-header {
   position: fixed;
-  z-index: 20;
+  z-index: 1000;
   top: 0;
   left: 0;
   right: 0;
@@ -300,14 +308,14 @@ p {
   width: min(var(--container), calc(100% - 32px));
   min-height: 76px;
   margin-inline: auto;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 24px;
   align-items: center;
   padding: 12px 0;
 }
 
 .site-header.is-scrolled {
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
 .brand img {
@@ -330,7 +338,7 @@ p {
   padding: 10px 14px;
   border-radius: var(--radius-small);
   color: rgba(249, 249, 249, 0.88);
-  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+  transition: background-color var(--motion-fast) var(--ease-smooth), color var(--motion-fast) var(--ease-smooth), transform var(--motion-fast) var(--ease-smooth);
 }
 
 .nav a:hover,
@@ -346,7 +354,7 @@ p {
 }
 
 .header-actions {
-  display: flex;
+  display: none;
   gap: 14px;
   align-items: center;
   justify-content: flex-end;
@@ -388,7 +396,7 @@ p {
   height: 2px;
   border-radius: 999px;
   background: currentColor;
-  transition: transform 180ms ease, opacity 180ms ease;
+  transition: transform var(--motion-base) var(--ease-emphasized), opacity var(--motion-fast) var(--ease-smooth);
 }
 
 .menu-toggle span:nth-child(1) {
@@ -457,11 +465,11 @@ p {
 }
 
 .page-transition.is-leaving::before {
-  animation: page-transition-cover-in 960ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: page-transition-cover-in 1040ms var(--ease-emphasized) forwards;
 }
 
 .page-transition.is-leaving .page-transition-logo {
-  animation: page-transition-logo-train-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 580ms forwards;
+  animation: page-transition-logo-train-in 820ms var(--ease-emphasized) 560ms forwards;
 }
 
 .page-transition.is-entering {
@@ -471,13 +479,13 @@ p {
 
 .page-transition.is-entering::before {
   transform: translateY(0);
-  animation: page-transition-cover-out 980ms cubic-bezier(0.16, 1, 0.3, 1) 560ms forwards;
+  animation: page-transition-cover-out 1080ms var(--ease-emphasized) 520ms forwards;
 }
 
 .page-transition.is-entering .page-transition-logo {
   opacity: 1;
   transform: translateX(0) scale(1);
-  animation: page-transition-logo-train-out 560ms cubic-bezier(0.72, 0, 0.92, 0.42) forwards;
+  animation: page-transition-logo-train-out 640ms cubic-bezier(0.55, 0.04, 0.75, 0.3) forwards;
 }
 
 @keyframes page-transition-cover-in {
@@ -652,6 +660,8 @@ p {
 
 .button,
 .icon-button {
+  position: relative;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -661,13 +671,14 @@ p {
   border-radius: var(--radius-small);
   cursor: pointer;
   font-weight: 700;
-  transition: transform 160ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  transition: transform var(--motion-fast) var(--ease-smooth), background-color var(--motion-fast) var(--ease-smooth), border-color var(--motion-fast) var(--ease-smooth), color var(--motion-fast) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth);
 }
 
 .button:hover,
 .button:focus-visible,
 .icon-button:hover,
 .icon-button:focus-visible {
+  z-index: 40;
   transform: translateY(-1px);
 }
 
@@ -681,7 +692,7 @@ p {
 .button-primary:focus-visible {
   border-color: #263c5d;
   background: #263c5d;
-  box-shadow: 0 12px 26px rgba(27, 42, 65, 0.22);
+  box-shadow: var(--shadow-control-hover);
 }
 
 .button-light {
@@ -695,7 +706,7 @@ p {
   border-color: var(--color-navy);
   background: var(--color-navy);
   color: var(--color-white);
-  box-shadow: 0 12px 26px rgba(27, 42, 65, 0.14);
+  box-shadow: var(--shadow-control-hover);
 }
 
 .button-small {
@@ -717,7 +728,7 @@ p {
   border-color: var(--color-navy);
   background: var(--color-navy);
   color: var(--color-white);
-  box-shadow: 0 12px 26px rgba(27, 42, 65, 0.16);
+  box-shadow: var(--shadow-control-hover);
 }
 
 .route-panel,
@@ -730,7 +741,7 @@ p {
   background: var(--color-white);
   color: var(--color-ink);
   box-shadow: var(--shadow-soft);
-  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 180ms ease;
+  transition: background-color var(--motion-base) var(--ease-smooth), color var(--motion-base) var(--ease-smooth), border-color var(--motion-base) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth), transform var(--motion-base) var(--ease-smooth);
 }
 
 .route-panel {
@@ -882,7 +893,15 @@ p {
 }
 
 .passenger-tools-section {
-  padding-top: 34px;
+  padding: 70px 0;
+}
+
+.passenger-schedule-section {
+  background: var(--color-section-soft);
+}
+
+.passenger-stations-section {
+  background: var(--color-paper);
 }
 
 .passenger-stack {
@@ -920,8 +939,11 @@ p {
 
 .schedule-controls {
   display: grid;
+  position: relative;
+  z-index: 30;
   gap: 8px;
-  margin-bottom: 26px;
+  margin-bottom: 8px;
+  overflow: visible;
 }
 
 .schedule-controls-label {
@@ -937,13 +959,14 @@ p {
   gap: 14px;
   align-items: flex-end;
   justify-content: space-between;
+  overflow: visible;
 }
 
 .schedule-date-options {
   display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
   overflow: visible;
@@ -952,6 +975,10 @@ p {
 .page-back-row {
   display: flex;
   margin-bottom: 18px;
+}
+
+.page-back-row[hidden] {
+  display: none;
 }
 
 .page-back {
@@ -1029,7 +1056,7 @@ p {
   height: 24px;
   filter: invert(15%) sepia(21%) saturate(1080%) hue-rotate(174deg) brightness(89%) contrast(92%);
   pointer-events: none;
-  transition: transform 180ms ease, filter 220ms ease;
+  transition: transform var(--motion-base) var(--ease-emphasized), filter var(--motion-base) var(--ease-smooth);
 }
 
 .route-swap:hover img,
@@ -1136,7 +1163,7 @@ p {
   border-radius: 4px;
   background: var(--color-navy);
   transform: translateX(calc(var(--time-mode-index, 0) * 100%));
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease;
+  transition: transform 320ms var(--ease-emphasized), background-color var(--motion-base) var(--ease-smooth);
 }
 
 .segmented-control label {
@@ -1165,7 +1192,7 @@ p {
   font-size: 16px;
   font-weight: 700;
   text-transform: none;
-  transition: color 180ms ease;
+  transition: color var(--motion-fast) var(--ease-smooth);
 }
 
 .segmented-control input:checked + span {
@@ -1216,7 +1243,7 @@ p {
   height: 24px;
   opacity: 0.72;
   pointer-events: none;
-  transition: filter 220ms ease, opacity 220ms ease;
+  transition: filter var(--motion-base) var(--ease-smooth), opacity var(--motion-base) var(--ease-smooth);
 }
 
 .route-date input::-webkit-calendar-picker-indicator,
@@ -1241,7 +1268,7 @@ p {
   border: 1px solid rgba(27, 42, 65, 0.14);
   border-radius: var(--radius-small);
   background: var(--color-white);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-surface);
 }
 
 .station-options[hidden] {
@@ -1305,14 +1332,17 @@ p {
 }
 
 .route-card {
+  position: relative;
+  z-index: 1;
   padding: 18px;
   max-width: 100%;
   overflow: hidden;
 }
 
 .route-card:not(.is-past):hover {
+  z-index: 2;
   transform: translateY(-2px);
-  box-shadow: 0 22px 52px rgba(27, 42, 65, 0.18);
+  box-shadow: var(--shadow-raised);
 }
 
 .route-card.is-past {
@@ -1365,19 +1395,19 @@ p {
 }
 
 .line-pill {
-  display: inline-flex;
+  display: inline-grid;
   flex: 0 0 auto;
-  min-width: 40px;
-  min-height: 30px;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 8px;
+  min-width: 36px;
+  min-height: 28px;
+  place-items: center;
+  padding: 2px 7px 0;
   border-radius: var(--radius-small);
   background: var(--color-navy);
   color: var(--color-white);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
+  text-align: center;
 }
 
 .route-direction {
@@ -1614,6 +1644,7 @@ p {
 .route-toggle {
   display: inline-grid;
   position: absolute;
+  z-index: 20;
   top: 4px;
   right: 0;
   width: 38px;
@@ -1625,11 +1656,12 @@ p {
   background: var(--color-white);
   color: var(--color-navy);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  transition: background-color var(--motion-fast) var(--ease-smooth), border-color var(--motion-fast) var(--ease-smooth), transform var(--motion-base) var(--ease-emphasized);
 }
 
 .route-toggle:hover,
 .route-toggle:focus-visible {
+  z-index: 40;
   border-color: rgba(27, 42, 65, 0.34);
   background: var(--color-paper);
 }
@@ -1641,7 +1673,7 @@ p {
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: translateY(-2px) rotate(45deg);
-  transition: transform 160ms ease;
+  transition: transform var(--motion-base) var(--ease-emphasized);
 }
 
 .route-toggle.is-open::before {
@@ -1859,6 +1891,8 @@ p {
 }
 
 .passenger-table-shell {
+  position: relative;
+  z-index: 1;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1880,11 +1914,35 @@ p {
   display: flex;
   gap: 8px;
   min-width: 0;
-  flex: 0 0 auto;
+  max-width: 100%;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 4px 14px;
+  margin: -8px -4px -6px;
+  scroll-padding-inline: 4px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.schedule-days::-webkit-scrollbar {
+  height: 8px;
+}
+
+.schedule-days::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(27, 42, 65, 0.08);
+}
+
+.schedule-days::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(27, 42, 65, 0.34);
 }
 
 .schedule-day {
   display: grid;
+  position: relative;
+  z-index: 20;
   min-width: 74px;
   height: 56px;
   flex: 0 0 auto;
@@ -1899,11 +1957,13 @@ p {
   cursor: pointer;
   box-shadow: var(--shadow-control);
   text-align: left;
-  transition: background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  scroll-snap-align: start;
+  transition: background-color var(--motion-fast) var(--ease-smooth), color var(--motion-fast) var(--ease-smooth), border-color var(--motion-fast) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth), transform var(--motion-fast) var(--ease-smooth);
 }
 
 .schedule-day:hover,
 .schedule-day:focus-visible {
+  z-index: 40;
   border-color: var(--color-navy);
   background: rgba(27, 42, 65, 0.06);
   box-shadow: var(--shadow-control-hover);
@@ -1943,59 +2003,32 @@ p {
   color: rgba(255, 255, 255, 0.72);
 }
 
-.schedule-custom-day {
-  position: relative;
-  min-width: 148px;
-  padding-right: 38px;
-  cursor: pointer;
-}
-
-.schedule-custom-day::after {
-  content: "";
-  position: absolute;
-  right: 12px;
-  bottom: 13px;
-  width: 18px;
-  height: 18px;
-  background: currentColor;
-  mask: url("../icons/calendar.svg") center / contain no-repeat;
-  -webkit-mask: url("../icons/calendar.svg") center / contain no-repeat;
-  pointer-events: none;
-}
-
-.schedule-custom-day input {
-  width: 100%;
-  min-height: auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
+.schedule-days-empty {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius-small);
+  background: var(--color-paper);
+  color: var(--color-muted);
   font-weight: 800;
-}
-
-.schedule-custom-day input:focus {
-  outline: 0;
-}
-
-.schedule-custom-day input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-}
-
-.schedule-custom-day.is-active input::-webkit-calendar-picker-indicator {
-  filter: invert(1);
 }
 
 .schedule-scroll-actions {
   display: flex;
+  position: relative;
+  z-index: 30;
   gap: 10px;
   flex: 0 0 auto;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  margin-top: 12px;
 }
 
 .schedule-scroll-button {
   display: inline-grid;
+  position: relative;
+  z-index: 20;
   width: 54px;
   height: 44px;
   place-items: center;
@@ -2005,7 +2038,7 @@ p {
   color: var(--color-navy);
   cursor: pointer;
   box-shadow: var(--shadow-control);
-  transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  transition: transform var(--motion-fast) var(--ease-smooth), background-color var(--motion-fast) var(--ease-smooth), border-color var(--motion-fast) var(--ease-smooth), color var(--motion-fast) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth), opacity var(--motion-fast) var(--ease-smooth);
 }
 
 .schedule-scroll-button::before {
@@ -2026,6 +2059,7 @@ p {
 
 .schedule-scroll-button:hover,
 .schedule-scroll-button:focus-visible {
+  z-index: 40;
   border-color: var(--color-navy);
   background: var(--color-navy);
   color: var(--color-white);
@@ -2259,7 +2293,7 @@ thead .schedule-station-cell {
 
 .station-map-item {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   min-height: 44px;
@@ -2317,12 +2351,6 @@ thead .schedule-station-cell {
   white-space: nowrap;
 }
 
-.station-map-number {
-  color: var(--color-muted);
-  font-size: 14px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
 
 .news-section {
   background: var(--color-paper);
@@ -2341,6 +2369,8 @@ thead .schedule-station-cell {
 
 .news-card {
   display: grid;
+  position: relative;
+  z-index: 1;
   grid-template-rows: auto 1fr;
   align-content: start;
   height: 100%;
@@ -2349,8 +2379,9 @@ thead .schedule-station-cell {
 
 .news-card:hover,
 .news-card:focus-visible {
+  z-index: 2;
   transform: translateY(-2px);
-  box-shadow: 0 24px 56px rgba(27, 42, 65, 0.18);
+  box-shadow: var(--shadow-raised);
 }
 
 .news-card-image {
@@ -2437,11 +2468,19 @@ thead .schedule-station-cell {
 }
 
 .feature-card {
+  position: relative;
+  z-index: 1;
   overflow: hidden;
+}
+
+.feature-link {
+  position: relative;
+  z-index: 1;
 }
 
 .feature-link:hover,
 .feature-link:focus-visible {
+  z-index: 2;
   transform: translateY(-2px);
 }
 
@@ -2647,6 +2686,8 @@ thead .schedule-station-cell {
 }
 
 .footer {
+  position: relative;
+  z-index: 80;
   padding: 34px 0;
   background: var(--color-navy-2);
   color: var(--color-paper);
@@ -2745,11 +2786,11 @@ thead .schedule-station-cell {
 
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy {
-    animation: rise-in 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: rise-in 720ms var(--ease-emphasized) both;
   }
 
   .hero-search-panel {
-    animation: rise-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+    animation: rise-in 820ms var(--ease-emphasized) 120ms both;
   }
 
   .news-card,
@@ -2760,7 +2801,7 @@ thead .schedule-station-cell {
   .person-card,
   .job-card,
   .timeline-item {
-    animation: rise-in 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: rise-in 620ms var(--ease-emphasized) both;
   }
 
   .news-card:nth-child(2) {
@@ -2772,25 +2813,25 @@ thead .schedule-station-cell {
   }
 
   .route-card {
-    animation: rise-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: rise-in 480ms var(--ease-emphasized) both;
   }
 
   .route-card .route-rail {
-    animation: rail-grow 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: rail-grow 620ms var(--ease-emphasized) both;
     transform-origin: left center;
   }
 
   .station-options {
-    animation: soft-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: soft-pop 280ms var(--ease-emphasized) both;
     transform-origin: top center;
   }
 
   .route-stops:not([hidden]) {
-    animation: reveal-down 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: reveal-down 360ms var(--ease-emphasized) both;
   }
 
   .route-card.is-expanded [data-route-detail]:not([hidden]) {
-    animation: reveal-down 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: reveal-down 420ms var(--ease-emphasized) both;
   }
 
   .route-card.is-expanded .route-transfer-gap:not([hidden]),
@@ -2799,7 +2840,7 @@ thead .schedule-station-cell {
   }
 
   .site-header.is-menu-open .nav a {
-    animation: nav-item-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: nav-item-in 380ms var(--ease-emphasized) both;
   }
 
   .site-header.is-menu-open .nav a:nth-child(2) {
@@ -2844,6 +2885,10 @@ thead .schedule-station-cell {
     gap: 12px;
   }
 
+  .header-actions {
+    display: flex;
+  }
+
   .nav {
     display: grid;
     position: fixed;
@@ -2858,7 +2903,7 @@ thead .schedule-station-cell {
     padding: 8px 16px 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.14);
     background: var(--color-navy);
-    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
     justify-content: stretch;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -2867,7 +2912,7 @@ thead .schedule-station-cell {
     transform: translateY(-10px) scale(0.98);
     transform-origin: top center;
     visibility: hidden;
-    transition: opacity 280ms ease, transform 280ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 280ms;
+    transition: opacity 340ms var(--ease-smooth), transform 340ms var(--ease-emphasized), visibility 0s linear 340ms;
   }
 
   .site-header.is-menu-open .nav {
@@ -3024,11 +3069,18 @@ thead .schedule-station-cell {
   }
 
   .schedule-date-options {
+    width: 100%;
+    flex-basis: 100%;
     overflow: visible;
   }
 
+  .schedule-days {
+    width: 100%;
+  }
+
   .schedule-scroll-actions {
-    justify-content: flex-end;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .schedule-scroll-button {
@@ -3103,7 +3155,7 @@ thead .schedule-station-cell {
   }
 
   .station-map-item {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-columns: 26px minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -3147,7 +3199,7 @@ thead .schedule-station-cell {
   }
 
   .line-pill {
-    min-width: 40px;
+    min-width: 36px;
   }
 
   .route-direction {
@@ -3249,8 +3301,8 @@ thead .schedule-station-cell {
   }
 
   .line-pill {
-    min-width: 38px;
-    min-height: 30px;
-    padding-inline: 7px;
+    min-width: 34px;
+    min-height: 27px;
+    padding: 2px 6px 0;
   }
 }

@@ -26,14 +26,14 @@
     <main id="top">
       <section class="section passenger-search-section" id="routes">
         <div class="container">
-          <div class="page-back-row">
-            <a class="page-back" href="index.html">Назад</a>
+          <div class="page-back-row" data-search-back hidden>
+            <a class="page-back" href="./">Назад</a>
           </div>
           <div class="passenger-page-title">
             <h1>Пассажирам</h1>
           </div>
 
-          <form class="route-panel route-search-panel search-page-panel passenger-search-panel" id="route-search" action="passengers.html" method="get" data-routes-source="data/routes.csv">
+          <form class="route-panel route-search-panel search-page-panel passenger-search-panel" id="route-search" action="passengers" method="get" data-routes-source="data/routes/">
             <div class="field-grid">
               <label class="field station-field route-from">
                 <span class="sr-only">Откуда</span>
@@ -83,8 +83,8 @@
         </div>
       </section>
 
-      <section class="section passenger-tools-section">
-        <div class="container passenger-stack">
+      <section class="section passenger-tools-section passenger-schedule-section">
+        <div class="container">
           <section class="passenger-card schedule-card" aria-labelledby="schedule-title">
             <div class="passenger-section-head">
               <h2 id="schedule-title">Расписание</h2>
@@ -94,23 +94,23 @@
               <div class="schedule-controls-row">
                 <div class="schedule-date-options">
                   <div class="schedule-days" id="schedule-days" aria-label="Выбор дня"></div>
-                  <label class="schedule-day schedule-custom-day" id="schedule-custom-day">
-                    <span>Своя дата</span>
-                    <input id="schedule-date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="ДД.ММ.ГГГГ">
-                  </label>
-                </div>
-                <div class="schedule-scroll-actions" aria-label="Быстрое листание расписания">
-                  <button class="schedule-scroll-button schedule-scroll-prev" id="schedule-scroll-prev" type="button" aria-label="Прокрутить расписание влево"></button>
-                  <button class="schedule-scroll-button schedule-scroll-next" id="schedule-scroll-next" type="button" aria-label="Прокрутить расписание вправо"></button>
                 </div>
               </div>
             </div>
             <div class="table-shell passenger-table-shell">
               <div class="schedule-matrix" id="schedule-table"></div>
             </div>
+            <div class="schedule-scroll-actions" aria-label="Быстрое листание расписания">
+              <button class="schedule-scroll-button schedule-scroll-prev" id="schedule-scroll-prev" type="button" aria-label="Прокрутить расписание влево"></button>
+              <button class="schedule-scroll-button schedule-scroll-next" id="schedule-scroll-next" type="button" aria-label="Прокрутить расписание вправо"></button>
+            </div>
             <div class="empty-state schedule-empty" id="schedule-empty" hidden>На выбранную дату поездов не найдено.</div>
           </section>
+        </div>
+      </section>
 
+      <section class="section passenger-tools-section passenger-stations-section">
+        <div class="container">
           <section class="passenger-card station-map-card" aria-labelledby="stations-title">
             <div class="passenger-section-head">
               <h2 id="stations-title">Станции</h2>

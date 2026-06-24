@@ -12,28 +12,31 @@ const resultsActions = document.querySelector("#results-actions");
 const loadMoreButton = document.querySelector("#load-more-routes");
 const cardTemplate = document.querySelector("#route-card-template");
 const swapButton = document.querySelector("#swap-stations");
-const scheduleDateInput = document.querySelector("#schedule-date");
 const scheduleDays = document.querySelector("#schedule-days");
 const scheduleTable = document.querySelector("#schedule-table");
 const scheduleTableShell = document.querySelector(".passenger-table-shell");
-const scheduleCustomDay = document.querySelector("#schedule-custom-day");
+const scheduleScrollActions = document.querySelector(".schedule-scroll-actions");
 const scheduleScrollPrev = document.querySelector("#schedule-scroll-prev");
 const scheduleScrollNext = document.querySelector("#schedule-scroll-next");
 const scheduleEmpty = document.querySelector("#schedule-empty");
 const stationMap = document.querySelector("#station-map");
+const searchBackRow = document.querySelector("[data-search-back]");
 const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
 
 const INITIAL_RESULTS_LIMIT = 3;
 const RESULTS_INCREMENT = 2;
 const MAX_RESULTS_LIMIT = 5;
 const MIN_TRANSFER_MINUTES = 0;
+const DEFAULT_SCHEDULE_LOOKAHEAD_DAYS = 14;
+const MAX_PUBLISHED_SCHEDULE_DAYS = 120;
+const ROUTE_CACHE_TTL_MS = 10 * 60 * 1000;
+const ROUTE_CACHE_PREFIX = "mayrail-route-data-v1:";
 
 let routeData = { routes: [] };
 let stations = [];
 let currentMatches = [];
 let visibleResultsLimit = INITIAL_RESULTS_LIMIT;
 let selectedScheduleDateValue = "";
-let scheduleCustomDateActive = false;
 let isScheduleDragging = false;
 let scheduleDragStartX = 0;
 let scheduleDragStartScroll = 0;
@@ -44,6 +47,7 @@ const stationPickers = new Map([
 ]);
 
 setCurrentDateTime();
+syncSearchBackVisibility();
 
 init();
 
@@ -65,15 +69,120 @@ async function init() {
 }
 
 async function loadRouteData() {
-  const source = routeForm.dataset.routesSource || "data/routes.csv";
-  const response = await fetch(source, { cache: "no-store" });
+  const source = routeForm.dataset.routesSource || "data/routes/";
+  const sourceUrl = new URL(source, window.location.href);
+  const sourcePath = sourceUrl.pathname.toLowerCase();
+
+  if (source.endsWith("/") || !sourcePath.split("/").pop().includes(".")) {
+    return loadRouteManifest(new URL("manifest.json", sourceUrl.href.endsWith("/") ? sourceUrl.href : `${sourceUrl.href}/`));
+  }
+
+  if (sourcePath.endsWith(".json")) {
+    return loadRouteManifest(sourceUrl);
+  }
+
+  return loadRouteCsv(sourceUrl);
+}
+
+async function loadRouteCsv(sourceUrl) {
+  const text = await fetchTextWithCache(sourceUrl.href);
+  return csvToRouteData(text);
+}
+
+async function loadRouteManifest(manifestUrl) {
+  const text = await fetchTextWithCache(manifestUrl.href);
+  const manifest = JSON.parse(text);
+  const files = normalizeRouteManifest(manifest);
+
+  if (!files.length) {
+    throw new Error(`Route manifest is empty: ${manifestUrl.href}`);
+  }
+
+  const routeDataSets = await Promise.all(files.map((file, index) => {
+    const fileUrl = new URL(file, manifestUrl);
+    return loadRouteCsv(fileUrl).then((data) => namespaceRouteData(data, index));
+  }));
+
+  return mergeRouteData(routeDataSets);
+}
+
+async function fetchTextWithCache(url) {
+  const cached = readRouteCache(url);
+  const isFresh = cached && Date.now() - cached.createdAt < ROUTE_CACHE_TTL_MS;
+
+  if (isFresh) {
+    return cached.text;
+  }
+
+  const response = await fetch(url, { cache: "no-store" });
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Data request failed: ${response.status}`);
+    throw new Error(`Data request failed: ${response.status} (${url})`);
   }
 
-  return csvToRouteData(text);
+  writeRouteCache(url, text);
+  return text;
+}
+
+function readRouteCache(url) {
+  try {
+    const rawValue = localStorage.getItem(getRouteCacheKey(url));
+    if (!rawValue) return null;
+
+    const cached = JSON.parse(rawValue);
+    if (typeof cached.text !== "string" || !Number.isFinite(cached.createdAt)) return null;
+
+    return cached;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeRouteCache(url, text) {
+  try {
+    localStorage.setItem(getRouteCacheKey(url), JSON.stringify({
+      createdAt: Date.now(),
+      text
+    }));
+  } catch (error) {
+    // localStorage can be unavailable or full; the site can still load from the network.
+  }
+}
+
+function getRouteCacheKey(url) {
+  return `${ROUTE_CACHE_PREFIX}${url}`;
+}
+
+function normalizeRouteManifest(manifest) {
+  const entries = Array.isArray(manifest)
+    ? manifest
+    : Array.isArray(manifest.files)
+      ? manifest.files
+      : Array.isArray(manifest.schedules)
+        ? manifest.schedules
+        : [];
+
+  return entries
+    .map((entry) => typeof entry === "string" ? entry : entry?.path || entry?.file || entry?.href)
+    .filter(Boolean);
+}
+
+function namespaceRouteData(data, sourceIndex) {
+  const namespace = `schedule-${sourceIndex + 1}`;
+
+  return {
+    routes: (data.routes || []).map((route) => ({
+      ...route,
+      id: `${namespace}-${route.id || route.line || route.direction || "route"}`
+    }))
+  };
+}
+
+function mergeRouteData(routeDataSets) {
+  return {
+    routes: routeDataSets.flatMap((data) => data.routes || [])
+  };
 }
 
 function csvToRouteData(csv) {
@@ -828,6 +937,10 @@ function renderScheduleTable() {
     scheduleTableShell.hidden = !hasRows;
   }
 
+  if (scheduleScrollActions) {
+    scheduleScrollActions.hidden = !hasRows;
+  }
+
   if (scheduleEmpty) {
     scheduleEmpty.hidden = hasRows;
   }
@@ -838,31 +951,84 @@ function renderScheduleTable() {
 function renderScheduleDays() {
   if (!scheduleDays) return;
 
-  const selectedValue = selectedScheduleDateValue || formatInputDate(getSelectedScheduleDate());
-  const today = new Date();
-  const firstDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const days = Array.from({ length: 2 }, (_, index) => {
-    const date = new Date(firstDate);
-    date.setDate(firstDate.getDate() + index);
-    return date;
-  });
+  const days = getPublishedScheduleDates();
+
+  if (!days.length) {
+    selectedScheduleDateValue = "";
+    scheduleDays.innerHTML = '<div class="schedule-days-empty">Расписание не опубликовано</div>';
+    return;
+  }
+
+  const hasSelectedDate = days.some((date) => formatInputDate(date) === selectedScheduleDateValue);
+  if (!hasSelectedDate) {
+    selectedScheduleDateValue = formatInputDate(days[0]);
+  }
 
   scheduleDays.innerHTML = days.map((date) => {
     const value = formatInputDate(date);
     return `
-      <button class="schedule-day ${!scheduleCustomDateActive && value === selectedValue ? "is-active" : ""}" type="button" data-date="${value}">
+      <button class="schedule-day ${value === selectedScheduleDateValue ? "is-active" : ""}" type="button" data-date="${value}">
         <span>${escapeHtml(formatWeekday(date))}</span>
         <strong>${escapeHtml(formatDayMonth(date))}</strong>
       </button>
     `;
   }).join("");
+}
 
-  scheduleCustomDay?.classList.toggle("is-active", scheduleCustomDateActive);
+function getPublishedScheduleDates() {
+  const trips = routeData.routes.flatMap((route) => route.trips || []);
+  const today = startOfCalendarDay(new Date());
+  const ranges = trips
+    .map((trip) => getTripPublicationRange(trip, today))
+    .filter(Boolean);
+
+  if (!ranges.length) return [];
+
+  const firstDate = new Date(Math.min(...ranges.map((range) => range.start.getTime())));
+  const lastPublishedDate = new Date(Math.max(...ranges.map((range) => range.end.getTime())));
+  const lastAllowedDate = addCalendarDays(firstDate, MAX_PUBLISHED_SCHEDULE_DAYS - 1);
+  const lastDate = lastPublishedDate < lastAllowedDate ? lastPublishedDate : lastAllowedDate;
+  const dates = [];
+
+  for (let date = new Date(firstDate); date <= lastDate; date = addCalendarDays(date, 1)) {
+    if (buildScheduleMatrix(date).trains.length) {
+      dates.push(new Date(date));
+    }
+  }
+
+  return dates;
+}
+
+function getTripPublicationRange(trip, today) {
+  let start = trip.periodStart ? startOfCalendarDay(trip.periodStart) : new Date(today);
+  if (start < today) start = new Date(today);
+
+  const end = trip.periodEnd
+    ? startOfCalendarDay(trip.periodEnd)
+    : addCalendarDays(start, DEFAULT_SCHEDULE_LOOKAHEAD_DAYS - 1);
+
+  if (end < start) return null;
+  return { start, end };
+}
+
+function startOfCalendarDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addCalendarDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 }
 
 function getSelectedScheduleDate() {
   if (selectedScheduleDateValue) {
     return getDateFromInput({ value: selectedScheduleDateValue });
+  }
+
+  const publishedDates = getPublishedScheduleDates();
+  if (publishedDates.length) {
+    return new Date(publishedDates[0]);
   }
 
   const today = new Date();
@@ -968,13 +1134,12 @@ function renderStationMap() {
   if (!stationMap) return;
 
   const orderedStations = getStationMapStations(routeData.routes);
-  stationMap.innerHTML = orderedStations.map((station, index) => `
+  stationMap.innerHTML = orderedStations.map((station) => `
     <li class="station-map-item">
       <span class="station-map-track" aria-hidden="true">
         <span class="station-map-dot"></span>
       </span>
       <span class="station-map-name">${escapeHtml(station)}</span>
-      <span class="station-map-number">${String(index + 1).padStart(2, "0")}</span>
     </li>
   `).join("");
 }
@@ -1000,9 +1165,19 @@ function tripRunsOnDate(trip, date) {
   const departureDateTime = getDateTimeForDate(date, trip.depart);
 
   if (trip.periodStart && departureDateTime < trip.periodStart) return false;
-  if (trip.periodEnd && departureDateTime > trip.periodEnd) return false;
+  if (trip.periodEnd && departureDateTime > getPeriodEndBoundary(trip.periodEnd)) return false;
 
   return true;
+}
+
+function getPeriodEndBoundary(periodEnd) {
+  const hasExplicitTime = periodEnd.getHours()
+    || periodEnd.getMinutes()
+    || periodEnd.getSeconds()
+    || periodEnd.getMilliseconds();
+
+  if (hasExplicitTime) return periodEnd;
+  return new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate(), 23, 59, 59, 999);
 }
 
 function runsOnDateValue(days, date) {
@@ -1067,8 +1242,15 @@ function applySearchParams() {
   return Boolean(from && to);
 }
 
+function syncSearchBackVisibility() {
+  if (!searchBackRow) return;
+
+  const params = new URLSearchParams(window.location.search);
+  searchBackRow.hidden = !(params.get("from") && params.get("to"));
+}
+
 function redirectToSearchPage() {
-  const target = routeForm.dataset.resultsPage || "search.html";
+  const target = routeForm.dataset.resultsPage || "search";
   const params = buildSearchParams();
   const destination = `${target}?${params.toString()}`;
 
@@ -1416,11 +1598,6 @@ function getDisplayDateValue(input) {
   return date ? formatDisplayDate(date) : "";
 }
 
-function getInternalDateValue(input) {
-  const date = parseInputDateValue(input?.value);
-  return date ? formatInputDate(date) : "";
-}
-
 function formatDateTyping(value) {
   const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
   const parts = [
@@ -1595,10 +1772,8 @@ function clearResults() {
 function setCurrentDateTime() {
   const now = new Date();
   const today = formatInputDate(now);
-  const customDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
   dateInput.value = formatDisplayDate(now);
   selectedScheduleDateValue = today;
-  if (scheduleDateInput) scheduleDateInput.value = formatDisplayDate(customDate);
   timeInput.value = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
@@ -1798,25 +1973,10 @@ dateInput.addEventListener("blur", () => {
 dateInput.addEventListener("change", clearResults);
 timeInput.addEventListener("change", clearResults);
 timeModeInputs.forEach((input) => input.addEventListener("change", syncTimeModeLabel));
-scheduleDateInput?.addEventListener("focus", () => {
-  scheduleCustomDateActive = true;
-  selectedScheduleDateValue = getInternalDateValue(scheduleDateInput) || selectedScheduleDateValue;
-  syncScheduleDate();
-});
-scheduleDateInput?.addEventListener("input", () => {
-  scheduleDateInput.value = formatDateTyping(scheduleDateInput.value);
-});
-scheduleDateInput?.addEventListener("change", () => {
-  scheduleCustomDateActive = true;
-  const date = normalizeDateInput(scheduleDateInput, getSelectedScheduleDate());
-  selectedScheduleDateValue = formatInputDate(date);
-  syncScheduleDate();
-});
 scheduleDays?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-date]");
   if (!button) return;
 
-  scheduleCustomDateActive = false;
   selectedScheduleDateValue = button.dataset.date;
   syncScheduleDate();
 });

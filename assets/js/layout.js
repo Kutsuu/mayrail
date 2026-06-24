@@ -15,17 +15,17 @@ function renderSiteHeader() {
   if (!mount) return;
 
   const navigation = [
-    { href: "passengers.html", label: "Пассажирам", pages: ["passengers.html", "search.html"] },
-    { href: "business.html", label: "Предпринимателям", pages: ["business.html"] },
-    { href: "about.html", label: "О нас", pages: ["about.html"] },
-    { href: "projects.html", label: "Проекты", pages: ["projects.html"] },
-    { href: "join.html", label: "Присоединиться", pages: ["join.html"] }
+    { href: "passengers", label: "Пассажирам", pages: ["passengers.html", "search.html"] },
+    { href: "business", label: "Предпринимателям", pages: ["business.html"] },
+    { href: "about", label: "О нас", pages: ["about.html"] },
+    { href: "projects", label: "Проекты", pages: ["projects.html"] },
+    { href: "join", label: "Присоединиться", pages: ["join.html"] }
   ];
 
   mount.outerHTML = `
     <header class="site-header">
       <div class="site-header-inner">
-        <a class="brand" href="index.html" aria-label="Главная страница">
+        <a class="brand" href="./" aria-label="Главная страница">
           <img src="assets/img/logo-compact.png" alt="Первомайские железные дороги">
         </a>
         <nav class="nav" id="primary-nav" aria-label="Основная навигация">
@@ -262,6 +262,7 @@ function hasStoredTransitionIntent() {
 }
 
 function getCurrentPage() {
-  const page = window.location.pathname.split("/").pop();
-  return page || "index.html";
+  const page = window.location.pathname.split("/").filter(Boolean).pop();
+  if (!page) return "index.html";
+  return page.includes(".") ? page : `${page}.html`;
 }

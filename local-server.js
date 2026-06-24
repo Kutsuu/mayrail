@@ -29,29 +29,53 @@ function createServer() {
   return http.createServer((request, response) => {
     const requestUrl = new URL(request.url, "http://localhost");
     const pathname = decodeURIComponent(requestUrl.pathname);
-    const requestedPath = pathname === "/" ? "/index.html" : pathname;
-    const filePath = path.normalize(path.join(root, requestedPath));
-    const rootPath = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
 
-    if (!filePath.startsWith(rootPath)) {
-      sendText(response, 403, "Forbidden");
+    if (pathname !== "/" && pathname.endsWith("/")) {
+      response.writeHead(308, { Location: `${pathname.slice(0, -1)}${requestUrl.search}` });
+      response.end();
       return;
     }
 
-    fs.stat(filePath, (statError, stats) => {
-      if (statError || !stats.isFile()) {
-        sendText(response, 404, "Not found");
-        return;
-      }
+    const filePath = resolveFilePath(pathname);
+    if (!filePath) {
+      sendText(response, 404, "Not found");
+      return;
+    }
 
-      const ext = path.extname(filePath).toLowerCase();
-      response.writeHead(200, {
-        "Content-Type": mimeTypes[ext] || "application/octet-stream",
-        "Cache-Control": "no-store"
-      });
-      fs.createReadStream(filePath).pipe(response);
+    const ext = path.extname(filePath).toLowerCase();
+    response.writeHead(200, {
+      "Content-Type": mimeTypes[ext] || "application/octet-stream",
+      "Cache-Control": "no-store"
     });
+    fs.createReadStream(filePath).pipe(response);
   });
+}
+
+function resolveFilePath(pathname) {
+  const requestedPath = pathname === "/" ? "/index.html" : pathname;
+  const candidates = [requestedPath];
+
+  if (!path.extname(requestedPath)) {
+    candidates.push(`${requestedPath}.html`);
+    candidates.push(path.join(requestedPath, "index.html"));
+  }
+
+  return candidates
+    .map((candidate) => path.normalize(path.join(root, candidate)))
+    .find((filePath) => isSafePath(filePath) && isReadableFile(filePath));
+}
+
+function isSafePath(filePath) {
+  const rootPath = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return filePath.startsWith(rootPath);
+}
+
+function isReadableFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch (error) {
+    return false;
+  }
 }
 
 function sendText(response, status, text) {

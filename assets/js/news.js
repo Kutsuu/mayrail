@@ -69,7 +69,7 @@ function renderNewsPage(container, posts) {
 
 function renderNewsCard(post) {
   return `
-    <a class="news-card" href="news.html?id=${encodeURIComponent(post.id)}">
+    <a class="news-card" href="news?id=${encodeURIComponent(post.id)}">
       ${renderNewsImage(post)}
       <div class="news-card-body">
         <h3>${escapeHtml(post.title)}</h3>
