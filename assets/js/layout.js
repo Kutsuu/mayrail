@@ -118,9 +118,18 @@ function setupMobileMenu() {
 
   window.addEventListener("resize", () => {
     if (window.innerWidth > 960) {
-      setMobileMenuState(siteHeader, menuToggle, false);
+      if (siteHeader.classList.contains("is-menu-open")) {
+        setMobileMenuState(siteHeader, menuToggle, false);
+      } else {
+        syncMobileNavInteractivity(siteHeader);
+      }
+      return;
     }
+
+    syncMobileNavInteractivity(siteHeader);
   });
+
+  syncMobileNavInteractivity(siteHeader);
 }
 
 function setMobileMenuState(siteHeader, menuToggle, isOpen) {
@@ -128,12 +137,28 @@ function setMobileMenuState(siteHeader, menuToggle, isOpen) {
   document.documentElement.classList.toggle("is-site-menu-open", isOpen);
   menuToggle.setAttribute("aria-expanded", String(isOpen));
   menuToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
+  syncMobileNavInteractivity(siteHeader);
+
   if (isOpen) {
     requestAnimationFrame(() => {
       siteHeader.querySelector(".nav a")?.focus({ preventScroll: true });
     });
   }
   window.dispatchEvent(new Event("resize"));
+}
+
+function syncMobileNavInteractivity(siteHeader) {
+  const primaryNav = siteHeader.querySelector("#primary-nav");
+  if (!primaryNav) return;
+
+  const shouldDisable = window.innerWidth <= 960 && !siteHeader.classList.contains("is-menu-open");
+  primaryNav.inert = shouldDisable;
+
+  if (shouldDisable) {
+    primaryNav.setAttribute("aria-hidden", "true");
+  } else {
+    primaryNav.removeAttribute("aria-hidden");
+  }
 }
 
 function keepMenuFocusInside(event, siteHeader) {
