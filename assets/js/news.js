@@ -3,6 +3,7 @@
   const NEWS_CACHE_PREFIX = "mayrail-news-data-v1:";
   const NEWS_EXCERPT_LIMIT = 230;
   const NEWS_LOAD_ERROR = "Новости сейчас недоступны. Пожалуйста, попробуйте позже.";
+  const NEWS_IMAGE_PLACEHOLDER = "assets/img/placeholder.png";
 
   initNews();
 
@@ -258,6 +259,7 @@
     }
 
     container.innerHTML = visiblePosts.map(renderNewsCard).join("");
+    setupNewsImageFallback(container);
   }
 
   function renderNewsPage(container, posts) {
@@ -288,6 +290,7 @@
 
     document.title = `ПЖД | ${post.title}`;
     container.innerHTML = renderNewsArticle(post);
+    setupNewsImageFallback(container);
   }
 
   function renderNewsCard(post) {
@@ -317,11 +320,38 @@
   }
 
   function renderNewsImage(post, className = "news-card-image") {
-    if (!post.image) return "";
+    const hasImage = Boolean(post.image);
+    const src = hasImage ? post.image : NEWS_IMAGE_PLACEHOLDER;
+    const alt = hasImage ? post.imageAlt || post.title : "";
+    const classes = `${className}${hasImage ? "" : " is-placeholder"}`;
 
     return `
-      <img class="${className}" src="${escapeHtml(post.image)}" alt="${escapeHtml(post.imageAlt || post.title)}" loading="lazy">
+      <img class="${classes}" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" data-news-image>
     `;
+  }
+
+  function setupNewsImageFallback(container) {
+    container.querySelectorAll("img[data-news-image]").forEach((image) => {
+      image.addEventListener("error", () => {
+        applyNewsImageFallback(image);
+      }, { once: true });
+
+      if (image.complete && image.naturalWidth === 0) {
+        applyNewsImageFallback(image);
+      }
+    });
+  }
+
+  function applyNewsImageFallback(image) {
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.dataset.newsFallbackApplied === "true") return;
+
+    image.dataset.newsFallbackApplied = "true";
+    image.classList.add("is-placeholder");
+
+    if (image.getAttribute("src") !== NEWS_IMAGE_PLACEHOLDER) {
+      image.src = NEWS_IMAGE_PLACEHOLDER;
+    }
   }
 
   function getContent(post) {

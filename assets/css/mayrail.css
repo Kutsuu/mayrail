@@ -361,17 +361,6 @@ p {
   gap: 7px;
 }
 
-.nav-item-has-menu > .nav-link::after {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  opacity: 0.72;
-  transition: transform var(--motion-fast) var(--ease-smooth), opacity var(--motion-fast) var(--ease-smooth);
-}
-
 .nav-item-has-menu::before {
   content: "";
   position: absolute;
@@ -393,21 +382,16 @@ p {
   color: var(--color-white);
 }
 
-.nav-item-has-menu:hover > .nav-link::after,
-.nav-item-has-menu:focus-within > .nav-link::after {
-  opacity: 1;
-  transform: translateY(1px) rotate(225deg);
-}
-
 .nav-menu {
   position: absolute;
   z-index: var(--z-dropdown);
   top: calc(100% + 10px);
   left: 0;
   display: grid;
-  min-width: 205px;
-  gap: 2px;
-  padding: 8px;
+  min-width: 190px;
+  max-width: min(280px, calc(100vw - 32px));
+  gap: 7px;
+  padding: 12px 14px;
   border: 1px solid rgba(27, 42, 65, 0.12);
   border-radius: var(--radius);
   background: var(--color-white);
@@ -429,16 +413,20 @@ p {
 }
 
 .nav .nav-sub-link {
-  padding: 9px 10px;
-  color: var(--color-navy);
-  font-size: 15px;
-  white-space: nowrap;
+  width: auto;
+  padding: 0;
+  border-radius: 0;
+  color: rgba(27, 42, 65, 0.72);
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .nav .nav-sub-link:hover,
 .nav .nav-sub-link:focus-visible {
-  background: rgba(27, 42, 65, 0.08);
+  background: transparent;
   color: var(--color-navy);
+  text-decoration: none;
   transform: none;
 }
 
@@ -2470,6 +2458,11 @@ thead .schedule-station-cell {
   object-fit: cover;
 }
 
+.news-card-image.is-placeholder,
+.news-article-image.is-placeholder {
+  background: var(--color-line);
+}
+
 .news-card-body {
   display: grid;
   align-content: start;
@@ -2523,6 +2516,11 @@ thead .schedule-station-cell {
   max-height: 520px;
   border-radius: var(--radius);
   object-fit: cover;
+}
+
+.news-article-image.is-placeholder {
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
 }
 
 .news-body {
@@ -2582,6 +2580,280 @@ thead .schedule-station-cell {
   min-height: 58px;
 }
 
+.project-workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.project-tab-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.project-sheet-tabs {
+  display: grid;
+  gap: 8px;
+}
+
+.project-sheet-tabs label {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius-small);
+  background: var(--color-white);
+  color: var(--color-navy);
+  font-family: var(--font-head);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-control);
+  transition: background-color var(--motion-base) var(--ease-smooth), border-color var(--motion-base) var(--ease-smooth), color var(--motion-base) var(--ease-smooth), transform var(--motion-base) var(--ease-emphasized), box-shadow var(--motion-base) var(--ease-smooth);
+}
+
+.project-sheet-tabs label:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-control-hover);
+}
+
+#project-sheet-active:focus-visible ~ .project-sheet-tabs label[for="project-sheet-active"],
+#project-sheet-archive:focus-visible ~ .project-sheet-tabs label[for="project-sheet-archive"],
+#project-sheet-planned:focus-visible ~ .project-sheet-tabs label[for="project-sheet-planned"] {
+  outline: 2px solid rgba(27, 42, 65, 0.24);
+  outline-offset: 3px;
+}
+
+#project-sheet-active:checked ~ .project-sheet-tabs label[for="project-sheet-active"],
+#project-sheet-archive:checked ~ .project-sheet-tabs label[for="project-sheet-archive"],
+#project-sheet-planned:checked ~ .project-sheet-tabs label[for="project-sheet-planned"] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: var(--color-white);
+}
+
+.project-sheet-panels {
+  min-width: 0;
+}
+
+.project-sheet-panel {
+  display: none;
+  gap: 12px;
+}
+
+#project-sheet-active:checked ~ .project-sheet-panels .project-sheet-active,
+#project-sheet-archive:checked ~ .project-sheet-panels .project-sheet-archive,
+#project-sheet-planned:checked ~ .project-sheet-panels .project-sheet-planned {
+  display: grid;
+}
+
+.project-row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  box-shadow: var(--shadow-soft);
+}
+
+.project-row img {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  object-fit: cover;
+}
+
+.project-row div {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  padding: 20px;
+}
+
+.project-row p {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.support-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.support-card {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  box-shadow: var(--shadow-soft);
+}
+
+.support-card h3 {
+  max-width: 760px;
+  color: var(--color-navy);
+  font-size: clamp(24px, 2.6vw, 38px);
+  line-height: 1.12;
+}
+
+.support-card p {
+  max-width: 680px;
+  color: var(--color-muted);
+}
+
+.ticket-rules {
+  display: grid;
+  gap: 22px;
+}
+
+.ticket-guide-block > h3,
+.ticket-faq h3 {
+  color: var(--color-navy);
+  line-height: 1.12;
+}
+
+.ticket-lead {
+  max-width: 920px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.ticket-guide-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 36px;
+  align-items: start;
+}
+
+.ticket-guide-block {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ticket-guide-block > h3,
+.ticket-faq h3 {
+  font-size: 24px;
+}
+
+.ticket-guide-text {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.ticket-point-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket-point-list li {
+  padding: 12px 0;
+  border-top: 1px solid rgba(27, 42, 65, 0.12);
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.ticket-point-list li:first-child {
+  border-top: 0;
+}
+
+.ticket-point-list strong {
+  color: var(--color-ink);
+  font-weight: 800;
+}
+
+.ticket-faq {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.ticket-faq .faq-list {
+  gap: 0;
+  max-width: 980px;
+}
+
+.ticket-faq .faq-item {
+  border: 0;
+  border-top: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ticket-faq .faq-item summary {
+  padding: 14px 0;
+}
+
+.ticket-faq .faq-item p {
+  padding: 0 0 16px;
+}
+
+.ticket-closing {
+  max-width: 860px;
+  color: var(--color-navy);
+  font-weight: 700;
+}
+
+.faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faq-item {
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  box-shadow: var(--shadow-control);
+  overflow: hidden;
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  color: var(--color-navy);
+  font-family: var(--font-head);
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--motion-base) var(--ease-emphasized);
+}
+
+.faq-item[open] summary::after {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.faq-item p {
+  padding: 0 18px 18px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
 .page-section h2 {
   margin-bottom: 22px;
 }
@@ -2594,7 +2866,6 @@ thead .schedule-station-cell {
 }
 
 .content-main,
-.info-card,
 .stat-card,
 .person-card,
 .job-card,
@@ -2627,7 +2898,6 @@ thead .schedule-station-cell {
   gap: 12px;
 }
 
-.info-card,
 .stat-card,
 .job-card {
   display: grid;
@@ -2635,17 +2905,6 @@ thead .schedule-station-cell {
   padding: 20px;
 }
 
-.info-card span,
-.stat-card span,
-.job-card span,
-.contact-strip span {
-  color: var(--color-muted);
-  font-size: 14px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.info-card strong,
 .stat-card strong {
   color: var(--color-navy);
   font-family: var(--font-head);
@@ -2672,6 +2931,64 @@ thead .schedule-station-cell {
 
 .people-grid {
   grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1fr);
+}
+
+.contact-info-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.38fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.contact-info-panel,
+.contact-person-card {
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-soft);
+}
+
+.contact-info-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 24px;
+}
+
+.contact-info-panel h3 {
+  max-width: 340px;
+  color: var(--color-navy);
+  font-size: clamp(24px, 2.2vw, 34px);
+  line-height: 1.08;
+}
+
+.contact-info-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: max-content;
+  max-width: 100%;
+  color: var(--color-navy);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.contact-info-line strong {
+  font-weight: 700;
+}
+
+.contact-info-line:hover,
+.contact-info-line:focus-visible {
+  text-decoration: none;
+}
+
+.contact-people-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1fr);
+  gap: 18px;
 }
 
 .person-card {
@@ -2827,7 +3144,7 @@ thead .schedule-station-cell {
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 7px;
   text-align: left;
 }
 
@@ -2839,7 +3156,8 @@ thead .schedule-station-cell {
 }
 
 .footer-block strong,
-.footer-block a {
+.footer-block a,
+.footer-contact-line {
   color: var(--color-paper);
   font-size: 17px;
   font-weight: 700;
@@ -2847,7 +3165,7 @@ thead .schedule-station-cell {
   text-align: left;
 }
 
-.footer-mail {
+.footer-contact-line {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -2860,7 +3178,8 @@ thead .schedule-station-cell {
   text-decoration: none;
 }
 
-.footer-mail span {
+.footer-contact-line span,
+.footer-contact-line strong {
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
@@ -2868,13 +3187,35 @@ thead .schedule-station-cell {
   text-transform: none;
 }
 
-.footer-mail img {
-  width: 16px;
-  height: 16px;
+.contact-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
   flex: 0 0 auto;
-  filter: invert(1);
+  background: currentColor;
   opacity: 0.9;
 }
+
+.contact-icon-mail {
+  mask: url("../icons/mail.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/mail.svg") center / contain no-repeat;
+}
+
+.contact-icon-headquarters {
+  mask: url("../icons/headquarters.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/headquarters.svg") center / contain no-repeat;
+}
+
+.contact-info-line .contact-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.footer-contact-line .contact-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .empty-state {
   padding: 24px;
   border: 1px dashed rgba(27, 42, 65, 0.24);
@@ -2895,7 +3236,8 @@ thead .schedule-station-cell {
   .news-card,
   .content-main,
   .passenger-card,
-  .info-card,
+  .ticket-guide-block,
+  .ticket-faq,
   .stat-card,
   .person-card,
   .job-card,
@@ -3033,14 +3375,12 @@ thead .schedule-station-cell {
     padding: 12px 14px;
   }
 
-  .nav-item-has-menu > .nav-link::after {
-    margin-left: auto;
-  }
-
   .nav-menu {
     position: static;
     min-width: 0;
-    padding: 0 0 4px 12px;
+    max-width: none;
+    gap: 6px 12px;
+    padding: 0 14px 10px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -3053,16 +3393,19 @@ thead .schedule-station-cell {
   }
 
   .nav .nav-sub-link {
-    padding: 9px 14px;
-    color: rgba(249, 249, 249, 0.76);
-    font-size: 15px;
+    width: auto;
+    padding: 0;
+    color: rgba(249, 249, 249, 0.68);
+    font-size: 14px;
+    line-height: 1.35;
     white-space: normal;
   }
 
   .nav .nav-sub-link:hover,
   .nav .nav-sub-link:focus-visible {
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
     color: var(--color-white);
+    text-decoration: none;
   }
 
   .menu-toggle {
@@ -3078,11 +3421,19 @@ thead .schedule-station-cell {
   }
 
   .content-grid,
+  .ticket-guide-columns,
   .stat-grid,
+  .contact-info-layout,
+  .contact-people-panel,
   .people-grid,
+  .project-workspace,
   .job-grid,
   .timeline-item {
     grid-template-columns: 1fr;
+  }
+
+  .project-sheet-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .hero {
@@ -3186,6 +3537,33 @@ thead .schedule-station-cell {
     background: var(--color-white);
     box-shadow: var(--shadow-soft);
   }
+
+  .news-section .section-head-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 0;
+    align-items: center;
+  }
+
+  .news-section .section-head-row > div {
+    min-width: 0;
+  }
+
+  .news-section .section-head-row::after {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .news-section .section-head-row .button {
+    width: auto;
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
   .passenger-search-section {
     padding: 34px 0 28px;
   }
@@ -3195,10 +3573,18 @@ thead .schedule-station-cell {
   }
 
   .passenger-section-head {
-    align-items: start;
-    flex-direction: column;
+    align-items: flex-end;
+    flex-direction: row;
     column-gap: 14px;
     row-gap: 0;
+    width: 100%;
+    margin-bottom: 24px;
+  }
+
+  .passenger-section-head::after {
+    flex: 0 0 100%;
+    width: 100%;
+    margin-top: 8px;
   }
 
   .schedule-date-options {
@@ -3255,6 +3641,11 @@ thead .schedule-station-cell {
   .icon-button {
     width: 100%;
     max-width: 100%;
+  }
+
+  .news-section .section-head-row .button {
+    width: auto;
+    max-width: none;
   }
 
   .field input {
@@ -3361,7 +3752,7 @@ thead .schedule-station-cell {
   }
 
   .content-main,
-  .info-card,
+  .contact-info-panel,
   .stat-card,
   .person-card div,
   .job-card,
@@ -3373,6 +3764,19 @@ thead .schedule-station-cell {
   .contact-strip {
     display: grid;
     align-items: start;
+  }
+
+  .project-row {
+    grid-template-columns: 1fr;
+  }
+
+  .project-row img {
+    height: 190px;
+    min-height: 0;
+  }
+
+  .support-card {
+    padding: 20px;
   }
 
   .contact-strip a {

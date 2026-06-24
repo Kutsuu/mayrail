@@ -26,9 +26,26 @@ function renderSiteHeader() {
         { href: "passengers#stations", label: "Станции" }
       ]
     },
-    { href: "business", label: "Предпринимателям", pages: ["business.html"] },
-    { href: "about", label: "О нас", pages: ["about.html"] },
-    { href: "projects", label: "Проекты", pages: ["projects.html"] },
+    {
+      href: "information",
+      label: "Информация",
+      pages: ["information.html"],
+      sections: [
+        { href: "information#tickets", label: "Билеты" },
+        { href: "information#faq", label: "Вопросы" },
+        { href: "information#contacts", label: "Контакты" }
+      ]
+    },
+    {
+      href: "about",
+      label: "О нас",
+      pages: ["about.html", "projects.html"],
+      sections: [
+        { href: "about#projects", label: "Проекты" },
+        { href: "about#history", label: "История" }
+      ]
+    },
+    { href: "support", label: "Поддержка", pages: ["support.html"] },
     { href: "join", label: "Присоединиться", pages: ["join.html"] }
   ];
 
@@ -188,10 +205,14 @@ function renderSiteFooter() {
           </div>
           <div class="footer-block">
             <span>Контактная информация</span>
-            <a class="footer-mail" href="mailto:info@mayrail.pro">
-              <img src="assets/icons/mail.svg" alt="" aria-hidden="true">
+            <a class="footer-contact-line footer-mail" href="mailto:info@mayrail.pro">
+              <span class="contact-icon contact-icon-mail" aria-hidden="true"></span>
               <strong>info@mayrail.pro</strong>
             </a>
+            <div class="footer-contact-line">
+              <span class="contact-icon contact-icon-headquarters" aria-hidden="true"></span>
+              <strong>ст. Первомайск</strong>
+            </div>
           </div>
         </div>
       </div>

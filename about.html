@@ -24,34 +24,75 @@
         </div>
       </section>
 
-      <section class="section page-section">
+      <section class="section page-section" id="projects">
         <div class="container section-head">
-          <h2>Наши люди</h2>
+          <h2>Проекты</h2>
         </div>
-        <div class="container people-grid">
-          <article class="person-card">
-            <img src="assets/img/legacy/sergey-zhuravlev.png" alt="Сергей Журавлёв">
-            <div>
-              <h3>Сергей Журавлёв</h3>
-              <p>Директор</p>
+        <div class="container project-workspace">
+          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-active" checked>
+          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-archive">
+          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-planned">
+
+          <div class="project-sheet-tabs" aria-label="Листы проектов">
+            <label for="project-sheet-active">В работе</label>
+            <label for="project-sheet-archive">Архив</label>
+            <label for="project-sheet-planned">Планы</label>
+          </div>
+
+          <div class="project-sheet-panels">
+            <div class="project-sheet-panel project-sheet-active">
+              <article class="project-row">
+                <img src="assets/img/signals.png" alt="">
+                <div>
+                  <h3>Инфраструктура</h3>
+                  <p>Информация о проектах инфраструктуры будет размещаться здесь.</p>
+                </div>
+              </article>
+              <article class="project-row">
+                <img src="assets/img/station-display.jpg" alt="">
+                <div>
+                  <h3>Пассажирская информация</h3>
+                  <p>Раздел для проектов, связанных с расписанием, информированием и станциями.</p>
+                </div>
+              </article>
+              <article class="project-row">
+                <img src="assets/img/rail-cart.jpg" alt="">
+                <div>
+                  <h3>Подвижной состав</h3>
+                  <p>Информация о проектах подвижного состава будет обновляться по мере готовности.</p>
+                </div>
+              </article>
             </div>
-          </article>
-          <article class="person-card person-card-empty">
-            <div>
-              <h3>Здесь можете быть Вы!</h3>
-              <p>Присоединяйтесь к нам уже сегодня!</p>
-              <a class="button button-primary" href="join">Присоединиться</a>
+
+            <div class="project-sheet-panel project-sheet-archive">
+              <article class="project-row">
+                <img src="assets/img/station-display.jpg" alt="">
+                <div>
+                  <h3>Архив проектов</h3>
+                  <p>Информация о выполненных проектах пока не опубликована.</p>
+                </div>
+              </article>
             </div>
-          </article>
+
+            <div class="project-sheet-panel project-sheet-planned">
+              <article class="project-row">
+                <img src="assets/img/signals.png" alt="">
+                <div>
+                  <h3>Будущие проекты</h3>
+                  <p>Информация о запланированных проектах будет размещаться здесь.</p>
+                </div>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="section section-soft page-section">
+      <section class="section section-soft page-section" id="history">
         <div class="container section-head">
           <h2>История</h2>
         </div>
         <div class="container timeline">
-          <article class="timeline-item timeline-item-text">
+          <article class="timeline-item">
             <img src="assets/img/legacy/history-early.jpg" alt="">
             <div>
               <h3>201?-2020</h3>
@@ -82,6 +123,12 @@
           <article class="timeline-item">
             <div>
               <h3>Лето 2024</h3>
+              <p>Здесь</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <div>
+              <h3>Лето 2025</h3>
               <p>Здесь</p>
             </div>
           </article>
