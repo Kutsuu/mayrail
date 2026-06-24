@@ -56,6 +56,9 @@ async function init() {
 
   try {
     routeData = await loadRouteData();
+    if (!routeData.routes?.length) {
+      throw new Error("Route data is empty");
+    }
     hydrateStations(routeData.routes);
     renderPassengerTools();
     if (applySearchParams() && !isRedirectSearch) {
@@ -63,6 +66,7 @@ async function init() {
     }
   } catch (error) {
     renderEmpty(ROUTE_LOAD_ERROR_MESSAGE);
+    renderScheduleError(ROUTE_LOAD_ERROR_MESSAGE);
     console.error(error);
   }
 }
@@ -942,6 +946,31 @@ function renderScheduleTable() {
 
   if (scheduleEmpty) {
     scheduleEmpty.hidden = hasRows;
+  }
+
+  updateScheduleScrollButtons();
+}
+
+function renderScheduleError(message) {
+  if (scheduleDays) {
+    scheduleDays.innerHTML = "";
+  }
+
+  if (scheduleTable) {
+    scheduleTable.innerHTML = "";
+  }
+
+  if (scheduleTableShell) {
+    scheduleTableShell.hidden = true;
+  }
+
+  if (scheduleScrollActions) {
+    scheduleScrollActions.hidden = true;
+  }
+
+  if (scheduleEmpty) {
+    scheduleEmpty.textContent = message;
+    scheduleEmpty.hidden = false;
   }
 
   updateScheduleScrollButtons();

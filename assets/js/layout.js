@@ -10,6 +10,7 @@ setupHeaderScrollState();
 setupHeaderOffset();
 setupPageTransitions();
 setupImageFallback();
+setupSmoothFaqDetails();
 
 function renderSiteHeader() {
   const mount = document.querySelector("[data-site-header]");
@@ -32,7 +33,6 @@ function renderSiteHeader() {
       pages: ["information.html"],
       sections: [
         { href: "information#tickets", label: "Билеты" },
-        { href: "information#faq", label: "Вопросы" },
         { href: "information#contacts", label: "Контакты" }
       ]
     },
@@ -205,9 +205,9 @@ function renderSiteFooter() {
           </div>
           <div class="footer-block">
             <span>Контактная информация</span>
-            <a class="footer-contact-line footer-mail" href="mailto:info@mayrail.pro">
+            <a class="footer-contact-line footer-mail" href="mailto:info@mayrail.xyz">
               <span class="contact-icon contact-icon-mail" aria-hidden="true"></span>
-              <strong>info@mayrail.pro</strong>
+              <strong>info@mayrail.xyz</strong>
             </a>
             <div class="footer-contact-line">
               <span class="contact-icon contact-icon-headquarters" aria-hidden="true"></span>
@@ -289,6 +289,125 @@ function setupImageFallback() {
 
   checkLoadedImages();
   window.addEventListener("load", checkLoadedImages, { once: true });
+}
+
+function setupSmoothFaqDetails() {
+  const items = [...document.querySelectorAll("details.faq-item")];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  items.forEach((details) => {
+    const summary = details.querySelector("summary");
+    if (!summary || typeof details.animate !== "function") return;
+
+    summary.addEventListener("click", (event) => {
+      if (reducedMotion.matches) return;
+
+      event.preventDefault();
+      toggleFaqDetails(details, summary);
+    });
+  });
+}
+
+function toggleFaqDetails(details, summary) {
+  if (details.open) {
+    closeFaqDetails(details, summary);
+    return;
+  }
+
+  closeSiblingFaqDetails(details);
+  openFaqDetails(details);
+}
+
+function closeSiblingFaqDetails(activeDetails) {
+  const group = activeDetails.closest(".faq-list");
+  if (!group) return;
+
+  group.querySelectorAll("details.faq-item[open]").forEach((details) => {
+    if (details === activeDetails) return;
+
+    const summary = details.querySelector("summary");
+    if (!summary) {
+      details.open = false;
+      return;
+    }
+
+    closeFaqDetails(details, summary);
+  });
+}
+
+function openFaqDetails(details) {
+  cancelFaqAnimation(details);
+
+  const startHeight = details.getBoundingClientRect().height;
+  details.open = true;
+  const endHeight = details.scrollHeight;
+
+  animateFaqDetails(details, startHeight, endHeight, () => {
+    details.open = true;
+  });
+}
+
+function closeFaqDetails(details, summary) {
+  cancelFaqAnimation(details);
+
+  const startHeight = details.getBoundingClientRect().height;
+  const endHeight = getClosedFaqHeight(details, summary);
+
+  animateFaqDetails(details, startHeight, endHeight, () => {
+    details.open = false;
+  });
+}
+
+function animateFaqDetails(details, startHeight, endHeight, onFinish) {
+  if (Math.abs(startHeight - endHeight) < 1) {
+    onFinish();
+    return;
+  }
+
+  details.classList.add("is-animating");
+  details.style.height = `${startHeight}px`;
+  details.style.overflow = "hidden";
+
+  const animation = details.animate([
+    { height: `${startHeight}px` },
+    { height: `${endHeight}px` }
+  ], {
+    duration: 340,
+    easing: "cubic-bezier(0.22, 0.61, 0.36, 1)"
+  });
+
+  details._faqAnimation = animation;
+
+  animation.onfinish = () => {
+    onFinish();
+    cleanupFaqAnimation(details);
+  };
+
+  animation.oncancel = () => {
+    cleanupFaqAnimation(details);
+  };
+}
+
+function cancelFaqAnimation(details) {
+  if (!details._faqAnimation) return;
+
+  details._faqAnimation.onfinish = null;
+  details._faqAnimation.oncancel = null;
+  details._faqAnimation.cancel();
+  cleanupFaqAnimation(details);
+}
+
+function cleanupFaqAnimation(details) {
+  details.classList.remove("is-animating");
+  details.style.height = "";
+  details.style.overflow = "";
+  details._faqAnimation = null;
+}
+
+function getClosedFaqHeight(details, summary) {
+  const styles = window.getComputedStyle(details);
+  const borderHeight = parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+  return summary.getBoundingClientRect().height + borderHeight;
 }
 
 function shouldAnimateLink(event, link) {
