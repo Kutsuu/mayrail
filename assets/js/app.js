@@ -26,6 +26,7 @@ const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
 const INITIAL_RESULTS_LIMIT = 3;
 const RESULTS_INCREMENT = 2;
 const MAX_RESULTS_LIMIT = 5;
+const MIN_TRANSFER_MINUTES = 0;
 
 let routeData = { routes: [] };
 let stations = [];
@@ -99,7 +100,7 @@ function isWideTrainSchedule(rows) {
 
 function isWideTrainHeaderRow(row) {
   const header = row.map(normalizeStation);
-  return header[0] === "предупреждение"
+  return (header[0] === "предупреждение" || header[0] === "примечание")
     && header[1] === "номер поезда"
     && header[2] === "маршрут";
 }
@@ -206,10 +207,15 @@ function getWideRouteMap(direction, stationColumns) {
     .split(/\s+[—–-]\s+/)
     .map((part) => part.trim())
     .filter(Boolean);
+
+  if (routeParts.length < 2) {
+    return { columns: stationColumns, stations };
+  }
+
   const startIndex = stations.findIndex((station) => normalizeStation(station) === normalizeStation(routeParts[0]));
   const endIndex = stations.findIndex((station) => normalizeStation(station) === normalizeStation(routeParts.at(-1)));
 
-  if (startIndex === -1 || endIndex === -1) {
+  if (startIndex === -1 || endIndex === -1 || startIndex === endIndex) {
     return { columns: stationColumns, stations };
   }
 
@@ -627,9 +633,11 @@ function setupStationPicker(input) {
   input.addEventListener("input", () => {
     picker.forceAll = false;
     picker.activeIndex = 0;
+    setStationValidity(input, true);
     renderStationOptions(input);
     clearResults();
   });
+  input.addEventListener("blur", () => validateStationInput(input, false));
   input.addEventListener("keydown", (event) => handleStationKeydown(event, input));
 
   picker.list.addEventListener("mousedown", (event) => {
@@ -647,16 +655,16 @@ function renderStationOptions(input) {
 
   const query = picker.forceAll ? "" : normalizeStation(input.value);
   const filteredStations = stations.filter((station) => normalizeStation(station).includes(query));
-  const visibleStations = filteredStations.length ? filteredStations : stations;
+  const visibleStations = filteredStations;
 
   picker.activeIndex = clamp(picker.activeIndex, 0, visibleStations.length - 1);
-  picker.list.innerHTML = visibleStations
-    .map((station, index) => `
+  picker.list.innerHTML = visibleStations.length
+    ? visibleStations.map((station, index) => `
       <button class="station-option" type="button" role="option" data-value="${escapeHtml(station)}" aria-selected="${index === picker.activeIndex}">
         ${escapeHtml(station)}
       </button>
-    `)
-    .join("");
+    `).join("")
+    : '<div class="station-option station-option-empty">Станция не найдена</div>';
 
   picker.list.hidden = false;
   input.closest(".station-field")?.classList.add("is-open");
@@ -698,6 +706,7 @@ function selectStation(input, station) {
   if (picker) picker.forceAll = false;
 
   input.value = station;
+  setStationValidity(input, true);
   hideStationOptions(input);
   clearResults();
 }
@@ -709,6 +718,47 @@ function hideStationOptions(input) {
   picker.list.hidden = true;
   input.closest(".station-field")?.classList.remove("is-open");
   input.setAttribute("aria-expanded", "false");
+}
+
+function validateStationInput(input, shouldRenderError = true) {
+  const isValid = !input.value.trim() || isKnownStation(input.value);
+  setStationValidity(input, isValid);
+
+  if (!isValid && shouldRenderError) {
+    renderEmpty("Выберите станцию из списка.");
+  }
+
+  return isValid;
+}
+
+function validateSearchFields() {
+  if (!stations.length) {
+    renderEmpty("Расписание сейчас недоступно.");
+    return false;
+  }
+
+  const fromValid = validateStationInput(fromInput, false);
+  const toValid = validateStationInput(toInput, false);
+
+  if (!fromValid || !toValid) {
+    renderEmpty("Выберите станцию из списка.");
+    return false;
+  }
+
+  const from = normalizeStation(fromInput.value);
+  const to = normalizeStation(toInput.value);
+
+  if (!from || !to || from === to) {
+    renderEmpty("Выберите разные станции отправления и прибытия.");
+    return false;
+  }
+
+  return true;
+}
+
+function setStationValidity(input, isValid) {
+  input.closest(".station-field")?.classList.toggle("is-invalid", !isValid);
+  input.setAttribute("aria-invalid", String(!isValid));
 }
 
 document.addEventListener("mousedown", (event) => {
@@ -725,20 +775,7 @@ function runSearch() {
   const timeMode = getTimeMode();
   const time = timeInput.value || "00:00";
 
-  if (!stations.length) {
-    renderEmpty("Расписание сейчас недоступно.");
-    return;
-  }
-
-  if (!from || !to || from === to) {
-    renderEmpty("Выберите разные станции отправления и прибытия.");
-    return;
-  }
-
-  if (!isKnownStation(fromInput.value) || !isKnownStation(toInput.value)) {
-    renderEmpty("Выберите станцию из списка.");
-    return;
-  }
+  if (!validateSearchFields()) return;
 
   currentMatches = findRouteMatches(from, to, time, timeMode, 0);
 
@@ -873,42 +910,50 @@ function renderScheduleMatrix(schedule) {
   return `
     <table class="schedule-direction-table">
       <thead>
-        <tr class="schedule-number-row">
+        <tr class="schedule-number-row schedule-number-row-top">
           <th class="schedule-station-cell"></th>
-          ${schedule.trains.map((train) => `
-            <th class="schedule-train-head">${train.direction === "down" ? escapeHtml(train.route.line) : ""}</th>
-          `).join("")}
+          ${schedule.trains.map((train) => renderScheduleTrainHead(train, "down")).join("")}
         </tr>
       </thead>
       <tbody>
         ${schedule.stations.map((station) => `
           <tr>
             <th class="schedule-station-cell ${isPrimaryStation(station) ? "is-primary" : ""}">${escapeHtml(station)}</th>
-            ${schedule.trains.map(({ route, trip }) => renderScheduleTimeCell(route, trip, station)).join("")}
+            ${schedule.trains.map((train) => renderScheduleTimeCell(train, station)).join("")}
           </tr>
         `).join("")}
       </tbody>
       <tfoot>
-        <tr class="schedule-number-row">
+        <tr class="schedule-number-row schedule-number-row-bottom">
           <th class="schedule-station-cell"></th>
-          ${schedule.trains.map((train) => `
-            <th class="schedule-train-head">${train.direction === "up" ? escapeHtml(train.route.line) : ""}</th>
-          `).join("")}
+          ${schedule.trains.map((train) => renderScheduleTrainHead(train, "up")).join("")}
         </tr>
       </tfoot>
     </table>
   `;
 }
 
-function renderScheduleTimeCell(route, trip, station) {
+function renderScheduleTrainHead(train, rowDirection) {
+  const directionClass = `is-${train.direction}`;
+
+  if (train.direction === rowDirection) {
+    return `<th class="schedule-train-head ${directionClass}"><span class="schedule-train-number">${escapeHtml(train.route.line)}</span></th>`;
+  }
+
+  return `<th class="schedule-train-head schedule-train-marker ${directionClass}" aria-hidden="true"></th>`;
+}
+
+function renderScheduleTimeCell(train, station) {
+  const { route, trip, direction } = train;
+  const directionClass = `is-${direction}`;
   const servesStation = route.stops.some((stop) => normalizeStation(stop) === normalizeStation(station));
   const time = servesStation ? getTripStationTime(trip, station) : "";
 
   if (!time) {
-    return '<td class="schedule-time-cell schedule-empty-cell"></td>';
+    return `<td class="schedule-time-cell schedule-empty-cell ${directionClass}"></td>`;
   }
 
-  return `<td class="schedule-time-cell"><time>${escapeHtml(time)}</time></td>`;
+  return `<td class="schedule-time-cell ${directionClass}"><time>${escapeHtml(time)}</time></td>`;
 }
 
 function getTripStationTime(trip, station) {
@@ -973,8 +1018,14 @@ function runsOnDateValue(days, date) {
 }
 
 function findRouteMatches(from, to, time, timeMode, dateOffset) {
-  return routeData.routes
+  const directMatches = routeData.routes
     .flatMap((route) => buildRouteMatches(route, from, to, time, timeMode, dateOffset))
+    .map((match) => ({ ...match, matchType: "direct", legs: [match] }));
+  const matches = directMatches.length
+    ? directMatches
+    : buildTransferMatches(from, to, time, timeMode, dateOffset);
+
+  return matches
     .sort((a, b) => sortMatchesByTime(a, b, timeMode))
     .slice(0, MAX_RESULTS_LIMIT);
 }
@@ -1038,6 +1089,11 @@ function updateSearchUrl() {
 }
 
 function buildRouteMatches(route, from, to, time, timeMode, dateOffset = 0) {
+  return buildRouteLegs(route, from, to, dateOffset)
+    .filter((match) => isMatchInTimeWindow(match, time, timeMode));
+}
+
+function buildRouteLegs(route, from, to, dateOffset = 0) {
   const normalizedStops = route.stops.map(normalizeStation);
   const fromIndex = normalizedStops.indexOf(from);
   const toIndex = normalizedStops.indexOf(to);
@@ -1067,8 +1123,80 @@ function buildRouteMatches(route, from, to, time, timeMode, dateOffset = 0) {
       };
     })
     .filter(isMatchInSelectedPeriod)
+    .map(markPastMatch);
+}
+
+function buildTransferMatches(from, to, time, timeMode, dateOffset = 0) {
+  return stations
+    .filter((station) => {
+      const normalized = normalizeStation(station);
+      return normalized !== from && normalized !== to;
+    })
+    .flatMap((transferStation) => {
+      const transfer = normalizeStation(transferStation);
+      const firstLegs = routeData.routes.flatMap((route) => buildRouteLegs(route, from, transfer, dateOffset));
+      const secondLegs = routeData.routes.flatMap((route) => buildRouteLegs(route, transfer, to, dateOffset));
+
+      return firstLegs
+        .map((firstLeg) => {
+          const secondLeg = secondLegs
+            .filter((candidate) => isValidTransferPair(firstLeg, candidate))
+            .sort((a, b) => timeToMinutes(a.depart) - timeToMinutes(b.depart))[0];
+
+          return secondLeg ? buildTransferMatch(firstLeg, secondLeg, transferStation, dateOffset) : null;
+        })
+        .filter(Boolean);
+    })
     .map(markPastMatch)
     .filter((match) => isMatchInTimeWindow(match, time, timeMode));
+}
+
+function isValidTransferPair(firstLeg, secondLeg) {
+  if (firstLeg.route.id === secondLeg.route.id && firstLeg.trip === secondLeg.trip) {
+    return false;
+  }
+
+  const firstArrival = timeToMinutes(firstLeg.arrive);
+  const secondDeparture = timeToMinutes(secondLeg.depart);
+
+  return secondDeparture >= firstArrival + MIN_TRANSFER_MINUTES;
+}
+
+function buildTransferMatch(firstLeg, secondLeg, transferStation, dateOffset) {
+  const transferWait = getTransferWaitMinutes(firstLeg, secondLeg);
+  const warnings = [firstLeg.trip.warning, secondLeg.trip.warning].filter(Boolean);
+
+  return {
+    matchType: "transfer",
+    legs: [firstLeg, secondLeg],
+    transferStation,
+    transferWait,
+    route: {
+      line: [firstLeg.route.line, secondLeg.route.line].join(" / "),
+      direction: `${firstLeg.from} - ${secondLeg.to}`,
+      from: firstLeg.from,
+      to: secondLeg.to
+    },
+    trip: {
+      warning: [...new Set(warnings)].join(" ")
+    },
+    platform: firstLeg.platform,
+    arrivalPlatform: secondLeg.arrivalPlatform,
+    depart: firstLeg.depart,
+    arrive: secondLeg.arrive,
+    from: firstLeg.from,
+    to: secondLeg.to,
+    dateOffset,
+    intermediateStops: [],
+    isPast: false
+  };
+}
+
+function getTransferWaitMinutes(firstLeg, secondLeg) {
+  const firstArrival = timeToMinutes(firstLeg.arrive);
+  const secondDeparture = timeToMinutes(secondLeg.depart);
+
+  return secondDeparture - firstArrival;
 }
 
 function isMatchInSelectedPeriod(match) {
@@ -1131,23 +1259,63 @@ function runsOnSelectedDay(days, dateOffset = 0) {
 function renderRouteCard(match) {
   const node = cardTemplate.content.firstElementChild.cloneNode(true);
   node.classList.toggle("is-past", match.isPast);
-  node.querySelector(".line-pill").textContent = match.route.line;
-  node.querySelector('[data-field="direction"]').textContent = match.route.direction || `${match.route.from} - ${match.route.to}`;
+  node.classList.toggle("has-transfer", match.matchType === "transfer");
+  renderRouteHeading(node.querySelector(".route-heading"), match);
   node.querySelector('[data-field="depart"]').textContent = match.depart;
   node.querySelector('[data-field="arrive"]').textContent = match.arrive;
   renderTripDates(node, match);
-  renderWarning(node, match.trip.warning);
+  renderWarnings(node, match);
 
   const duration = durationBetween(match.depart, match.arrive);
-  renderRouteLine(node.querySelector(".route-line"), duration);
-  setupRouteToggle(node, renderIntermediateStops(node.querySelector('[data-field="stops"]'), match));
+  renderRouteLine(node.querySelector(".route-line"), duration, getTransferCount(match));
+  setupRouteToggle(node, true);
   results.appendChild(node);
 }
 
-function renderRouteLine(container, duration) {
+function renderRouteHeading(container, match) {
+  const legs = getMatchLegs(match);
+
+  container.innerHTML = legs.map((leg, index) => `
+    <div class="route-leg-block">
+      <div class="route-leg-summary">
+        <span class="line-pill">${escapeHtml(leg.route.line)}</span>
+        <span class="route-direction">${escapeHtml(getLegLabel(leg))}</span>
+      </div>
+      ${renderRouteLegDetails(leg)}
+    </div>
+    ${index < legs.length - 1 ? renderTransferWait(leg, legs[index + 1]) : ""}
+  `).join("");
+}
+
+function getMatchLine(match) {
+  return getMatchLegs(match).map((leg) => leg.route.line).join(" / ");
+}
+
+function getMatchDirection(match) {
+  return getMatchLegs(match).map(getLegDirection).join(", ");
+}
+
+function getLegDirection(leg) {
+  return `${leg.from} - ${leg.to}`;
+}
+
+function getLegLabel(leg) {
+  return leg.route.direction || getLegDirection(leg);
+}
+
+function getMatchLegs(match) {
+  return match.legs?.length ? match.legs : [match];
+}
+
+function getTransferCount(match) {
+  return Math.max(0, getMatchLegs(match).length - 1);
+}
+
+function renderRouteLine(container, duration, transferCount = 0) {
   container.innerHTML = `
-    <span class="route-duration">${duration} мин</span>
+    <span class="route-duration">${escapeHtml(formatDuration(duration))}</span>
     <span class="route-rail"></span>
+    <span class="route-kind">${escapeHtml(formatTransferInfo(transferCount))}</span>
   `;
 }
 
@@ -1285,20 +1453,37 @@ function formatDayMonth(date) {
   ].join(".");
 }
 
-function renderWarning(node, warning) {
+function renderWarnings(node, match) {
   const warningBox = node.querySelector('[data-field="warning"]');
-  const warningText = node.querySelector('[data-field="warning-text"]');
-  const message = String(warning || "").trim();
+  const warningEntries = getMatchLegs(match)
+    .map((leg) => ({
+      line: leg.route.line,
+      text: String(leg.trip.warning || "").trim()
+    }))
+    .filter((entry) => entry.text);
 
-  warningBox.hidden = !message;
-  warningText.textContent = message;
+  warningBox.hidden = !warningEntries.length;
+  if (!warningEntries.length) return;
+
+  warningBox.innerHTML = `
+    <img class="route-warning-icon" src="assets/icons/warning.svg" alt="" aria-hidden="true">
+    <div class="route-warning-list">
+      ${warningEntries.map((entry) => `
+        <div class="route-warning-item">
+          <span class="route-warning-line">${escapeHtml(entry.line)}</span>
+          <span>${escapeHtml(entry.text)}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function setupRouteToggle(node, hasDetails) {
   const toggle = node.querySelector('[data-field="toggle"]');
-  const details = node.querySelector('[data-field="stops"]');
   const summary = node.querySelector('[data-field="summary"]');
+  const details = [...node.querySelectorAll("[data-route-detail]")];
 
+  hasDetails = hasDetails && details.length > 0;
   toggle.hidden = !hasDetails;
   if (!hasDetails) {
     node.querySelector(".route-times").classList.add("route-times-no-toggle");
@@ -1309,14 +1494,17 @@ function setupRouteToggle(node, hasDetails) {
   summary.addEventListener("click", (event) => {
     if (isTextSelectionActive()) return;
     if (event.target.closest("a, input, select, textarea")) return;
-    toggleRouteDetails(details, toggle);
+    toggleRouteDetails(node, toggle);
   });
 }
 
-function toggleRouteDetails(details, toggle) {
-  const willOpen = details.hidden;
+function toggleRouteDetails(node, toggle) {
+  const willOpen = !node.classList.contains("is-expanded");
 
-  details.hidden = !willOpen;
+  node.classList.toggle("is-expanded", willOpen);
+  node.querySelectorAll("[data-route-detail]").forEach((detail) => {
+    detail.hidden = !willOpen;
+  });
   toggle.classList.toggle("is-open", willOpen);
   toggle.setAttribute("aria-expanded", String(willOpen));
   toggle.setAttribute("aria-label", willOpen ? "Скрыть остановки" : "Показать остановки");
@@ -1335,30 +1523,56 @@ function renderEmpty(message) {
 }
 
 function renderIntermediateStops(container, match) {
-  const intermediateStops = match.intermediateStops;
-  const timelineStops = [
-    { station: match.from, time: match.depart, type: "endpoint start", platform: match.platform },
-    ...intermediateStops.map((stop) => ({ ...stop, type: "middle" })),
-    { station: match.to, time: match.arrive, type: "endpoint end", platform: match.arrivalPlatform }
-  ];
+  const legs = getMatchLegs(match);
+
   container.innerHTML = `
-    <div class="route-stop-timeline">
-      ${timelineStops.map((stop) => `
-        <div class="route-stop-row ${stop.type}">
-          <time class="route-stop-time">${escapeHtml(stop.time || "—")}</time>
-          <span class="route-stop-track" aria-hidden="true">
-            <span class="route-stop-dot"></span>
-          </span>
-          <span class="route-stop-name">
-            <span>${escapeHtml(stop.station)}</span>
-            ${renderPlatformLabel(stop.platform)}
-          </span>
-        </div>
+    <div class="route-leg-details">
+      ${legs.map((leg, index) => `
+        ${renderRouteLegDetails(leg)}
+        ${index < legs.length - 1 ? renderTransferWait(leg, legs[index + 1]) : ""}
       `).join("")}
     </div>
   `;
   container.hidden = true;
   return true;
+}
+
+function renderRouteLegDetails(leg) {
+  const timelineStops = [
+    { station: leg.from, time: leg.depart, type: "endpoint start", platform: leg.platform },
+    ...leg.intermediateStops.map((stop) => ({ ...stop, type: "middle" })),
+    { station: leg.to, time: leg.arrive, type: "endpoint end", platform: leg.arrivalPlatform }
+  ];
+
+  return `
+    <section class="route-leg-detail" data-route-detail hidden>
+      <div class="route-stop-timeline">
+        ${timelineStops.map((stop) => `
+          <div class="route-stop-row ${stop.type}">
+            <time class="route-stop-time">${escapeHtml(stop.time || "—")}</time>
+            <span class="route-stop-track" aria-hidden="true">
+              <span class="route-stop-dot"></span>
+            </span>
+            <span class="route-stop-name">
+              <span>${escapeHtml(stop.station)}</span>
+              ${renderPlatformLabel(stop.platform)}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderTransferWait(currentLeg, nextLeg) {
+  const wait = getTransferWaitMinutes(currentLeg, nextLeg);
+
+  return `
+    <div class="route-transfer-gap" data-route-detail hidden>
+      <img class="route-transfer-icon" src="assets/icons/switch.svg" alt="" aria-hidden="true">
+      <span>пересадка ${escapeHtml(formatDuration(wait))}</span>
+    </div>
+  `;
 }
 
 function renderPlatformLabel(platform) {
@@ -1508,6 +1722,31 @@ function durationBetween(start, end) {
   return duration;
 }
 
+function formatDuration(totalMinutes) {
+  const minutes = Number(totalMinutes) || 0;
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+
+  if (hours <= 0) return `${restMinutes} мин`;
+  if (restMinutes <= 0) return `${hours} ч`;
+  return `${hours} ч ${restMinutes} мин`;
+}
+
+function formatTransferInfo(count) {
+  if (!count) return "прямой";
+  return `${count} ${pluralizeRu(count, ["пересадка", "пересадки", "пересадок"])}`;
+}
+
+function pluralizeRu(number, forms) {
+  const absolute = Math.abs(number) % 100;
+  const lastDigit = absolute % 10;
+
+  if (absolute > 10 && absolute < 20) return forms[2];
+  if (lastDigit > 1 && lastDigit < 5) return forms[1];
+  if (lastDigit === 1) return forms[0];
+  return forms[2];
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -1526,6 +1765,7 @@ routeForm.addEventListener("submit", (event) => {
   hideStationOptions(fromInput);
   hideStationOptions(toInput);
   normalizeDateInput(dateInput);
+  if (!validateSearchFields()) return;
 
   if (isRedirectSearch) {
     redirectToSearchPage();

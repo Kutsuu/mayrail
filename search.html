@@ -13,13 +13,10 @@
     <link rel="stylesheet" href="assets/css/fonts.css">
     <script>
       try {
-        document.documentElement.dataset.theme = localStorage.getItem("mayrail-theme") || "light";
         if (sessionStorage.getItem("mayrail-page-transition") === "1") {
           document.documentElement.classList.add("is-page-transition-pending");
         }
-      } catch (error) {
-        document.documentElement.dataset.theme = "light";
-      }
+      } catch (error) {}
     </script>
     <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
@@ -116,7 +113,6 @@
     </template>
 
     <script src="assets/js/layout.js"></script>
-    <script src="assets/js/theme.js"></script>
     <script src="assets/js/app.js"></script>
   </body>
 </html>

@@ -1,10 +1,13 @@
 const currentPage = getCurrentPage();
-const PAGE_TRANSITION_ENTER_MS = 1540;
-const PAGE_TRANSITION_LEAVE_MS = 1720;
+const PAGE_TRANSITION_ENTER_MS = 1640;
+const PAGE_TRANSITION_LEAVE_MS = 1480;
 
 renderSiteHeader();
 renderSiteFooter();
 renderPageTransition();
+setupMobileMenu();
+setupHeaderScrollState();
+setupHeaderOffset();
 setupPageTransitions();
 
 function renderSiteHeader() {
@@ -13,8 +16,9 @@ function renderSiteHeader() {
 
   const navigation = [
     { href: "passengers.html", label: "Пассажирам", pages: ["passengers.html", "search.html"] },
-    { href: "services.html", label: "Услуги", pages: ["services.html"] },
+    { href: "business.html", label: "Предпринимателям", pages: ["business.html"] },
     { href: "about.html", label: "О нас", pages: ["about.html"] },
+    { href: "projects.html", label: "Проекты", pages: ["projects.html"] },
     { href: "join.html", label: "Присоединиться", pages: ["join.html"] }
   ];
 
@@ -28,10 +32,6 @@ function renderSiteHeader() {
           ${navigation.map(renderNavigationLink).join("")}
         </nav>
         <div class="header-actions">
-          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false">
-            <img class="theme-icon theme-icon-dark" src="assets/icons/dark-theme.svg" alt="" aria-hidden="true">
-            <img class="theme-icon theme-icon-light" src="assets/icons/light-theme.svg" alt="" aria-hidden="true">
-          </button>
           <button class="menu-toggle" id="menu-toggle" type="button" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню">
             <span></span>
             <span></span>
@@ -46,6 +46,65 @@ function renderSiteHeader() {
 function renderNavigationLink(item) {
   const isActive = item.pages.includes(currentPage);
   return `<a${isActive ? ' class="is-active"' : ""} href="${item.href}">${item.label}</a>`;
+}
+
+function setupMobileMenu() {
+  const menuToggle = document.querySelector("#menu-toggle");
+  const primaryNav = document.querySelector("#primary-nav");
+  const siteHeader = document.querySelector(".site-header");
+  if (!siteHeader || !menuToggle || !primaryNav) return;
+
+  menuToggle.addEventListener("click", () => {
+    setMobileMenuState(siteHeader, menuToggle, !siteHeader.classList.contains("is-menu-open"));
+  });
+
+  primaryNav.addEventListener("click", (event) => {
+    if (event.target.closest("a")) {
+      setMobileMenuState(siteHeader, menuToggle, false);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setMobileMenuState(siteHeader, menuToggle, false);
+    }
+  });
+}
+
+function setMobileMenuState(siteHeader, menuToggle, isOpen) {
+  siteHeader.classList.toggle("is-menu-open", isOpen);
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  menuToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
+  window.dispatchEvent(new Event("resize"));
+}
+
+function setupHeaderScrollState() {
+  const siteHeader = document.querySelector(".site-header");
+  if (!siteHeader) return;
+
+  const updateHeaderState = () => {
+    siteHeader.classList.toggle("is-scrolled", window.scrollY > 8);
+  };
+
+  updateHeaderState();
+  window.addEventListener("scroll", updateHeaderState, { passive: true });
+}
+
+function setupHeaderOffset() {
+  const siteHeader = document.querySelector(".site-header");
+  if (!siteHeader) return;
+
+  const updateHeaderOffset = () => {
+    document.documentElement.style.setProperty("--header-offset", `${siteHeader.offsetHeight}px`);
+  };
+
+  updateHeaderOffset();
+  window.addEventListener("load", updateHeaderOffset);
+  window.addEventListener("resize", updateHeaderOffset);
+
+  if ("ResizeObserver" in window) {
+    new ResizeObserver(updateHeaderOffset).observe(siteHeader);
+  }
 }
 
 function renderSiteFooter() {
@@ -96,13 +155,9 @@ function renderPageTransition() {
   }
 
   const transition = document.querySelector("#page-transition");
-  document.documentElement.classList.add("is-page-transition-active");
   transition?.classList.add("is-entering");
-  document.documentElement.classList.remove("is-page-transition-pending");
-  window.setTimeout(() => {
-    transition?.classList.remove("is-entering");
-    document.documentElement.classList.remove("is-page-transition-active");
-  }, PAGE_TRANSITION_ENTER_MS);
+  document.documentElement.classList.remove("is-page-transition-active", "is-page-transition-pending");
+  finishEnterTransitionWhenReady(transition);
 }
 
 function setupPageTransitions() {
@@ -165,6 +220,27 @@ function startPageTransition(destination) {
   window.setTimeout(() => {
     window.location.href = destination;
   }, PAGE_TRANSITION_LEAVE_MS);
+}
+
+function finishEnterTransitionWhenReady(transition) {
+  let isFinished = false;
+
+  const finish = () => {
+    if (isFinished) return;
+    isFinished = true;
+    transition?.classList.remove("is-entering");
+    document.documentElement.classList.remove("is-page-transition-active");
+  };
+
+  const handleAnimationEnd = (event) => {
+    if (event.animationName !== "page-transition-shell-out") return;
+    transition?.removeEventListener("animationend", handleAnimationEnd);
+    finish();
+  };
+
+  transition?.addEventListener("animationend", handleAnimationEnd);
+
+  window.setTimeout(finish, PAGE_TRANSITION_ENTER_MS + 80);
 }
 
 function storeTransitionIntent() {

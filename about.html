@@ -13,13 +13,10 @@
     <link rel="stylesheet" href="assets/css/fonts.css">
     <script>
       try {
-        document.documentElement.dataset.theme = localStorage.getItem("mayrail-theme") || "light";
         if (sessionStorage.getItem("mayrail-page-transition") === "1") {
           document.documentElement.classList.add("is-page-transition-pending");
         }
-      } catch (error) {
-        document.documentElement.dataset.theme = "light";
-      }
+      } catch (error) {}
     </script>
     <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
@@ -29,7 +26,6 @@
     <main id="top">
       <section class="page-hero section-dark">
         <div class="container">
-          <p class="eyebrow">Первомайские железные дороги</p>
           <h1>О нас</h1>
         </div>
       </section>
@@ -102,6 +98,5 @@
     <div data-site-footer></div>
 
     <script src="assets/js/layout.js"></script>
-    <script src="assets/js/theme.js"></script>
   </body>
 </html>

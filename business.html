@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Услуги Первомайских железных дорог.">
-    <title>ПЖД | Услуги</title>
+    <meta name="description" content="Информация для предпринимателей и грузовых клиентов Первомайских железных дорог.">
+    <title>ПЖД | Предпринимателям</title>
     <link rel="icon" href="assets/img/small.png" type="image/png">
     <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin>
@@ -13,13 +13,10 @@
     <link rel="stylesheet" href="assets/css/fonts.css">
     <script>
       try {
-        document.documentElement.dataset.theme = localStorage.getItem("mayrail-theme") || "light";
         if (sessionStorage.getItem("mayrail-page-transition") === "1") {
           document.documentElement.classList.add("is-page-transition-pending");
         }
-      } catch (error) {
-        document.documentElement.dataset.theme = "light";
-      }
+      } catch (error) {}
     </script>
     <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
@@ -29,35 +26,43 @@
     <main id="top">
       <section class="page-hero section-dark">
         <div class="container">
-          <p class="eyebrow">Для клиентов</p>
-          <h1>Услуги</h1>
+          <h1>Предпринимателям</h1>
         </div>
       </section>
 
       <section class="section page-section">
+        <div class="container section-head">
+          <h2>Грузовые перевозки</h2>
+        </div>
         <div class="container feature-grid feature-grid-three">
           <article class="feature-card service-card">
-            <img src="assets/img/legacy/service-freight.jpg" alt="">
+            <img src="assets/img/rail-cart.jpg" alt="">
             <div>
-              <h3>Грузовые перевозки</h3>
-            </div>
-          </article>
-          <article class="feature-card service-card">
-            <img src="assets/img/station-display.jpg" alt="">
-            <div>
-              <h3>Пассажирские перевозки</h3>
+              <h3>Бронирование перевозки</h3>
+              <p>Для запроса грузовой перевозки укажите маршрут, дату, примерный объём груза и контактные данные.</p>
             </div>
           </article>
           <article class="feature-card service-card">
             <img src="assets/img/legacy/service-infrastructure.jpg" alt="">
             <div>
               <h3>Инфраструктура</h3>
+              <p>Вопросы по использованию инфраструктуры можно направлять через контактную почту.</p>
+            </div>
+          </article>
+          <article class="feature-card service-card">
+            <img src="assets/img/legacy/service-freight.jpg" alt="">
+            <div>
+              <h3>Деловые обращения</h3>
+              <p>Заявки и предложения рассматриваются через общий контактный адрес.</p>
             </div>
           </article>
         </div>
 
         <div class="container contact-strip">
-          <span>Контактная информация</span>
+          <div>
+            <span>Контактная информация</span>
+            <p>Для бронирования и деловых вопросов напишите на почту.</p>
+          </div>
           <a href="mailto:info@mayrail.pro">info@mayrail.pro</a>
         </div>
       </section>
@@ -66,6 +71,5 @@
     <div data-site-footer></div>
 
     <script src="assets/js/layout.js"></script>
-    <script src="assets/js/theme.js"></script>
   </body>
 </html>
