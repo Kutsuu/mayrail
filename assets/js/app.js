@@ -20,7 +20,6 @@ const scheduleScrollPrev = document.querySelector("#schedule-scroll-prev");
 const scheduleScrollNext = document.querySelector("#schedule-scroll-next");
 const scheduleEmpty = document.querySelector("#schedule-empty");
 const stationMap = document.querySelector("#station-map");
-const searchBackRow = document.querySelector("[data-search-back]");
 const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
 
 const INITIAL_RESULTS_LIMIT = 3;
@@ -28,9 +27,10 @@ const RESULTS_INCREMENT = 2;
 const MAX_RESULTS_LIMIT = 5;
 const MIN_TRANSFER_MINUTES = 0;
 const DEFAULT_SCHEDULE_LOOKAHEAD_DAYS = 14;
-const MAX_PUBLISHED_SCHEDULE_DAYS = 120;
-const ROUTE_CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_PUBLISHED_SCHEDULE_DAYS = 5;
+const ROUTE_CACHE_TTL_MS = 2 * 60 * 1000;
 const ROUTE_CACHE_PREFIX = "mayrail-route-data-v1:";
+const ROUTE_LOAD_ERROR_MESSAGE = "Расписание сейчас недоступно. Пожалуйста, свяжитесь с оператором.";
 
 let routeData = { routes: [] };
 let stations = [];
@@ -47,7 +47,6 @@ const stationPickers = new Map([
 ]);
 
 setCurrentDateTime();
-syncSearchBackVisibility();
 
 init();
 
@@ -63,7 +62,7 @@ async function init() {
       runSearch();
     }
   } catch (error) {
-    renderEmpty("Расписание сейчас недоступно.");
+    renderEmpty(ROUTE_LOAD_ERROR_MESSAGE);
     console.error(error);
   }
 }
@@ -711,14 +710,14 @@ function normalizeTimeCell(value) {
 function alignTimeToPrevious(time, previousTime) {
   if (!time || !previousTime) return time;
 
-  const minutes = timeToMinutes(time);
+  let minutes = timeToMinutes(time);
   const previousMinutes = timeToMinutes(previousTime);
 
-  if (minutes < previousMinutes && minutes + 60 >= previousMinutes) {
-    return minutesToClock(minutes + 60);
+  while (minutes < previousMinutes) {
+    minutes += 1440;
   }
 
-  return time;
+  return minutesToServiceClock(minutes);
 }
 
 function hydrateStations(routes) {
@@ -842,7 +841,7 @@ function validateStationInput(input, shouldRenderError = true) {
 
 function validateSearchFields() {
   if (!stations.length) {
-    renderEmpty("Расписание сейчас недоступно.");
+    renderEmpty(ROUTE_LOAD_ERROR_MESSAGE);
     return false;
   }
 
@@ -1119,7 +1118,7 @@ function renderScheduleTimeCell(train, station) {
     return `<td class="schedule-time-cell schedule-empty-cell ${directionClass}"></td>`;
   }
 
-  return `<td class="schedule-time-cell ${directionClass}"><time>${escapeHtml(time)}</time></td>`;
+  return `<td class="schedule-time-cell ${directionClass}"><time>${escapeHtml(formatClockForDisplay(time))}</time></td>`;
 }
 
 function getTripStationTime(trip, station) {
@@ -1196,9 +1195,8 @@ function findRouteMatches(from, to, time, timeMode, dateOffset) {
   const directMatches = routeData.routes
     .flatMap((route) => buildRouteMatches(route, from, to, time, timeMode, dateOffset))
     .map((match) => ({ ...match, matchType: "direct", legs: [match] }));
-  const matches = directMatches.length
-    ? directMatches
-    : buildTransferMatches(from, to, time, timeMode, dateOffset);
+  const transferMatches = buildTransferMatches(from, to, time, timeMode, dateOffset);
+  const matches = [...directMatches, ...transferMatches];
 
   return matches
     .sort((a, b) => sortMatchesByTime(a, b, timeMode))
@@ -1240,13 +1238,6 @@ function applySearchParams() {
   updateTimeModeLabel();
 
   return Boolean(from && to);
-}
-
-function syncSearchBackVisibility() {
-  if (!searchBackRow) return;
-
-  const params = new URLSearchParams(window.location.search);
-  searchBackRow.hidden = !(params.get("from") && params.get("to"));
 }
 
 function redirectToSearchPage() {
@@ -1443,8 +1434,8 @@ function renderRouteCard(match) {
   node.classList.toggle("is-past", match.isPast);
   node.classList.toggle("has-transfer", match.matchType === "transfer");
   renderRouteHeading(node.querySelector(".route-heading"), match);
-  node.querySelector('[data-field="depart"]').textContent = match.depart;
-  node.querySelector('[data-field="arrive"]').textContent = match.arrive;
+  node.querySelector('[data-field="depart"]').textContent = formatClockForDisplay(match.depart);
+  node.querySelector('[data-field="arrive"]').textContent = formatClockForDisplay(match.arrive);
   renderTripDates(node, match);
   renderWarnings(node, match);
 
@@ -1699,21 +1690,6 @@ function renderEmpty(message) {
   resultsActions.hidden = true;
 }
 
-function renderIntermediateStops(container, match) {
-  const legs = getMatchLegs(match);
-
-  container.innerHTML = `
-    <div class="route-leg-details">
-      ${legs.map((leg, index) => `
-        ${renderRouteLegDetails(leg)}
-        ${index < legs.length - 1 ? renderTransferWait(leg, legs[index + 1]) : ""}
-      `).join("")}
-    </div>
-  `;
-  container.hidden = true;
-  return true;
-}
-
 function renderRouteLegDetails(leg) {
   const timelineStops = [
     { station: leg.from, time: leg.depart, type: "endpoint start", platform: leg.platform },
@@ -1726,7 +1702,7 @@ function renderRouteLegDetails(leg) {
       <div class="route-stop-timeline">
         ${timelineStops.map((stop) => `
           <div class="route-stop-row ${stop.type}">
-            <time class="route-stop-time">${escapeHtml(stop.time || "—")}</time>
+            <time class="route-stop-time">${escapeHtml(stop.time ? formatClockForDisplay(stop.time) : "—")}</time>
             <span class="route-stop-track" aria-hidden="true">
               <span class="route-stop-dot"></span>
             </span>
@@ -1889,6 +1865,16 @@ function minutesToClock(totalMinutes) {
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function minutesToServiceClock(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatClockForDisplay(time) {
+  return minutesToClock(timeToMinutes(time));
 }
 
 function durationBetween(start, end) {

@@ -3,116 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Поиск маршрутов Первомайских железных дорог.">
-    <title>ПЖД | Поиск</title>
+    <meta name="robots" content="noindex">
+    <title>ПЖД | Переход</title>
     <link rel="icon" href="assets/img/small.png" type="image/png">
-    <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggOxSuXd.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="assets/fonts/xn7gYHE41ni1AdIRggexSg.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19a7DRs5.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19K7DQ.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="assets/css/fonts.css">
+    <meta http-equiv="refresh" content="0; url=passengers">
     <script>
-      try {
-        if (sessionStorage.getItem("mayrail-page-transition") === "1") {
-          document.documentElement.classList.add("is-page-transition-pending");
-        }
-      } catch (error) {}
+      const target = new URL("passengers", window.location.href);
+      target.search = window.location.search;
+      window.location.replace(target.href);
     </script>
-    <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
   <body>
-    <div data-site-header></div>
-
-    <main id="top">
-      <section class="section search-page-section" id="routes">
-        <div class="container">
-          <div class="page-back-row">
-            <a class="page-back" href="./">Назад</a>
-          </div>
-          <form class="route-panel route-search-panel search-page-panel" id="route-search" action="search" method="get" data-routes-source="data/routes/">
-            <div class="field-grid">
-              <label class="field station-field route-from">
-                <span class="sr-only">Откуда</span>
-                <input id="from" name="from" autocomplete="off" placeholder="Откуда" aria-autocomplete="list" aria-expanded="false" aria-controls="from-options" required>
-                <div class="station-options" id="from-options" role="listbox" hidden></div>
-              </label>
-              <button class="icon-button route-swap" id="swap-stations" type="button" aria-label="Поменять станции местами">
-                <img src="assets/icons/switch.svg" alt="" aria-hidden="true">
-              </button>
-              <label class="field station-field route-to">
-                <span class="sr-only">Куда</span>
-                <input id="to" name="to" autocomplete="off" placeholder="Куда" aria-autocomplete="list" aria-expanded="false" aria-controls="to-options" required>
-                <div class="station-options" id="to-options" role="listbox" hidden></div>
-              </label>
-              <label class="field route-date">
-                <span>Дата</span>
-                <input id="date" name="date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="ДД.ММ.ГГГГ">
-                <img class="field-control-icon" src="assets/icons/calendar.svg" alt="" aria-hidden="true">
-              </label>
-              <fieldset class="field time-mode-field route-time-mode">
-                <legend class="sr-only">Режим времени</legend>
-                <span class="time-mode-title" aria-hidden="true">Режим времени</span>
-                <div class="segmented-control" id="time-mode">
-                  <label>
-                    <input type="radio" name="timeMode" value="depart" checked>
-                    <span>Отправление</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="timeMode" value="arrive">
-                    <span>Прибытие</span>
-                  </label>
-                </div>
-              </fieldset>
-              <label class="field route-time">
-                <span id="time-label">После</span>
-                <input id="time" name="time" type="time" value="09:00">
-                <img class="field-control-icon" src="assets/icons/clock.svg" alt="" aria-hidden="true">
-              </label>
-              <button class="button button-primary route-submit" type="submit">Найти</button>
-            </div>
-
-            <div class="results-list" id="results" hidden></div>
-            <div class="route-results-actions" id="results-actions" hidden>
-              <button class="button button-light load-more-routes" id="load-more-routes" type="button">Показать ещё</button>
-            </div>
-          </form>
-        </div>
-      </section>
-    </main>
-
-    <div data-site-footer></div>
-
-    <template id="route-card-template">
-      <article class="route-card">
-        <div class="route-summary" data-field="summary">
-          <div class="route-times">
-            <div class="route-time-point">
-              <span class="route-date-label" data-field="depart-date" hidden></span>
-              <strong data-field="depart"></strong>
-            </div>
-            <div class="route-line"></div>
-            <div class="route-time-point route-time-arrive">
-              <strong data-field="arrive"></strong>
-            </div>
-            <button class="route-toggle" data-field="toggle" type="button" aria-label="Показать остановки" aria-expanded="false" hidden></button>
-          </div>
-          <span class="route-date-label route-trip-date" data-field="arrive-date"></span>
-          <div class="route-card-top">
-            <div class="route-heading">
-              <span class="line-pill"></span>
-              <span class="route-direction" data-field="direction"></span>
-            </div>
-          </div>
-          <div class="route-warning" data-field="warning" hidden>
-            <img class="route-warning-icon" src="assets/icons/warning.svg" alt="" aria-hidden="true">
-            <span data-field="warning-text"></span>
-          </div>
-        </div>
-        <div class="route-stops" data-field="stops" hidden></div>
-      </article>
-    </template>
-
-    <script src="assets/js/layout.js"></script>
-    <script src="assets/js/app.js"></script>
+    <p><a href="passengers">Перейти на страницу «Пассажирам»</a></p>
   </body>
 </html>

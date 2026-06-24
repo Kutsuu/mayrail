@@ -9,13 +9,23 @@ setupMobileMenu();
 setupHeaderScrollState();
 setupHeaderOffset();
 setupPageTransitions();
+setupImageFallback();
 
 function renderSiteHeader() {
   const mount = document.querySelector("[data-site-header]");
   if (!mount) return;
 
   const navigation = [
-    { href: "passengers", label: "Пассажирам", pages: ["passengers.html", "search.html"] },
+    {
+      href: "passengers",
+      label: "Пассажирам",
+      pages: ["passengers.html", "search.html"],
+      sections: [
+        { href: "passengers#routes", label: "Поиск маршрута" },
+        { href: "passengers#schedule", label: "Расписание" },
+        { href: "passengers#stations", label: "Станции" }
+      ]
+    },
     { href: "business", label: "Предпринимателям", pages: ["business.html"] },
     { href: "about", label: "О нас", pages: ["about.html"] },
     { href: "projects", label: "Проекты", pages: ["projects.html"] },
@@ -45,7 +55,20 @@ function renderSiteHeader() {
 
 function renderNavigationLink(item) {
   const isActive = item.pages.includes(currentPage);
-  return `<a${isActive ? ' class="is-active"' : ""} href="${item.href}">${item.label}</a>`;
+  const linkClass = `nav-link${isActive ? " is-active" : ""}`;
+
+  if (!item.sections?.length) {
+    return `<a class="${linkClass}" href="${item.href}">${item.label}</a>`;
+  }
+
+  return `
+    <div class="nav-item nav-item-has-menu">
+      <a class="${linkClass}" href="${item.href}" aria-haspopup="true">${item.label}</a>
+      <div class="nav-menu" aria-label="${item.label}">
+        ${item.sections.map((section) => `<a class="nav-sub-link" href="${section.href}">${section.label}</a>`).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function setupMobileMenu() {
@@ -67,15 +90,51 @@ function setupMobileMenu() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       setMobileMenuState(siteHeader, menuToggle, false);
+      menuToggle.focus({ preventScroll: true });
+      return;
+    }
+
+    if (event.key === "Tab" && siteHeader.classList.contains("is-menu-open")) {
+      keepMenuFocusInside(event, siteHeader);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 960) {
+      setMobileMenuState(siteHeader, menuToggle, false);
     }
   });
 }
 
 function setMobileMenuState(siteHeader, menuToggle, isOpen) {
   siteHeader.classList.toggle("is-menu-open", isOpen);
+  document.documentElement.classList.toggle("is-site-menu-open", isOpen);
   menuToggle.setAttribute("aria-expanded", String(isOpen));
   menuToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
+  if (isOpen) {
+    requestAnimationFrame(() => {
+      siteHeader.querySelector(".nav a")?.focus({ preventScroll: true });
+    });
+  }
   window.dispatchEvent(new Event("resize"));
+}
+
+function keepMenuFocusInside(event, siteHeader) {
+  const focusable = [...siteHeader.querySelectorAll("a[href], button:not([disabled])")]
+    .filter((element) => element.offsetParent !== null);
+
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable.at(-1);
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus({ preventScroll: true });
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus({ preventScroll: true });
+  }
 }
 
 function setupHeaderScrollState() {
@@ -181,6 +240,34 @@ function setupPageTransitions() {
     document.documentElement.classList.remove("is-page-transition-active", "is-page-transition-pending");
     transition?.classList.remove("is-entering");
   });
+}
+
+function setupImageFallback() {
+  const fallbackSrc = "assets/img/placeholder.png";
+
+  const applyFallback = (image) => {
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.dataset.fallbackApplied === "true") return;
+    if (image.getAttribute("src") === fallbackSrc) return;
+
+    image.dataset.fallbackApplied = "true";
+    image.src = fallbackSrc;
+  };
+
+  document.addEventListener("error", (event) => {
+    applyFallback(event.target);
+  }, true);
+
+  const checkLoadedImages = () => {
+    document.querySelectorAll("img").forEach((image) => {
+      if (image.complete && image.naturalWidth === 0) {
+        applyFallback(image);
+      }
+    });
+  };
+
+  checkLoadedImages();
+  window.addEventListener("load", checkLoadedImages, { once: true });
 }
 
 function shouldAnimateLink(event, link) {

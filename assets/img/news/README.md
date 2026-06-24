@@ -1,3 +1,4 @@
 Картинки для новостей.
 
-Путь в `data/news.js` указывай так: `assets/img/news/name.jpg`.
+Файл картинки можно хранить здесь, а в Google Sheets в колонке `image` указывать путь так:
+`assets/img/news/name.jpg`.

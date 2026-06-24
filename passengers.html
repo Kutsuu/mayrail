@@ -11,26 +11,26 @@
     <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19a7DRs5.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="assets/fonts/ieVl2ZhZI2eCN5jzbjEETS9weq8-19K7DQ.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="assets/css/fonts.css">
-    <script>
-      try {
-        if (sessionStorage.getItem("mayrail-page-transition") === "1") {
-          document.documentElement.classList.add("is-page-transition-pending");
-        }
-      } catch (error) {}
-    </script>
+    <script src="assets/js/early-transition.js"></script>
     <link rel="stylesheet" href="assets/css/mayrail.css">
   </head>
   <body>
     <div data-site-header></div>
 
     <main id="top">
-      <section class="section passenger-search-section" id="routes">
+      <section class="page-hero page-hero-media section-dark passenger-hero">
+        <div class="page-hero-bg" aria-hidden="true">
+          <img src="assets/img/legacy/passengers.jpg" alt="">
+        </div>
         <div class="container">
-          <div class="page-back-row" data-search-back hidden>
-            <a class="page-back" href="./">Назад</a>
-          </div>
-          <div class="passenger-page-title">
-            <h1>Пассажирам</h1>
+          <h1>Пассажирам</h1>
+        </div>
+      </section>
+
+      <section class="section passenger-tools-section passenger-search-section" id="routes">
+        <div class="container passenger-search-content">
+          <div class="passenger-section-head">
+            <h2>Поиск маршрута</h2>
           </div>
 
           <form class="route-panel route-search-panel search-page-panel passenger-search-panel" id="route-search" action="passengers" method="get" data-routes-source="data/routes/">
@@ -83,7 +83,7 @@
         </div>
       </section>
 
-      <section class="section passenger-tools-section passenger-schedule-section">
+      <section class="section passenger-tools-section passenger-schedule-section" id="schedule">
         <div class="container">
           <section class="passenger-card schedule-card" aria-labelledby="schedule-title">
             <div class="passenger-section-head">
@@ -109,7 +109,7 @@
         </div>
       </section>
 
-      <section class="section passenger-tools-section passenger-stations-section">
+      <section class="section passenger-tools-section passenger-stations-section" id="stations">
         <div class="container">
           <section class="passenger-card station-map-card" aria-labelledby="stations-title">
             <div class="passenger-section-head">
@@ -149,7 +149,6 @@
             <span data-field="warning-text"></span>
           </div>
         </div>
-        <div class="route-stops" data-field="stops" hidden></div>
       </article>
     </template>
 
