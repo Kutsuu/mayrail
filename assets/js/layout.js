@@ -293,8 +293,26 @@ function setupImageFallback() {
 
   const applyFallback = (image) => {
     if (!(image instanceof HTMLImageElement)) return;
-    if (image.dataset.fallbackApplied === "true") return;
-    if (image.getAttribute("src") === fallbackSrc) return;
+    if (image.getAttribute("src") === fallbackSrc) {
+      image.dataset.fallbackApplied = "true";
+      return;
+    }
+
+    const attempted = new Set((image.dataset.fallbackAttempted || "").split("|").filter(Boolean));
+    const currentSrc = image.getAttribute("src") || "";
+    if (currentSrc) attempted.add(currentSrc);
+
+    const candidates = (image.dataset.fallbackCandidates || "")
+      .split("|")
+      .map((src) => src.trim())
+      .filter(Boolean);
+    const nextSrc = candidates.find((src) => !attempted.has(src));
+
+    if (nextSrc) {
+      image.dataset.fallbackAttempted = [...attempted].join("|");
+      image.src = nextSrc;
+      return;
+    }
 
     image.dataset.fallbackApplied = "true";
     image.src = fallbackSrc;

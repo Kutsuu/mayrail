@@ -100,6 +100,8 @@ body,
 .segmented-control,
 .station-options,
 .station-option,
+.station-map-button,
+.station-detail,
 .menu-toggle,
 .route-toggle,
 .route-stop-timeline,
@@ -2172,17 +2174,28 @@ p {
 }
 
 .schedule-direction-table {
-  width: max-content;
+  --schedule-station-width: 190px;
+  --schedule-train-width: 78px;
+  width: var(--schedule-table-width, max-content);
   min-width: 100%;
   overflow: visible;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: auto;
+  table-layout: fixed;
+}
+
+.schedule-station-col {
+  width: var(--schedule-station-width);
+}
+
+.schedule-train-col {
+  width: var(--schedule-train-width);
 }
 
 .schedule-direction-table th,
 .schedule-direction-table td {
-  min-width: 78px;
+  width: var(--schedule-train-width);
+  min-width: 0;
   padding: 8px 10px;
   border-right: 1px solid rgba(27, 42, 65, 0.12);
   border-bottom: 1px solid rgba(27, 42, 65, 0.12);
@@ -2212,18 +2225,17 @@ p {
   position: sticky;
   left: 0;
   z-index: 2;
-  width: 190px;
-  min-width: 190px;
+  width: var(--schedule-station-width);
+  min-width: var(--schedule-station-width);
+  max-width: var(--schedule-station-width);
+  overflow: hidden;
   padding-inline: 12px 10px;
   background: var(--color-white);
   color: var(--color-navy);
   font-family: var(--font-head);
   font-weight: 800;
   text-align: left;
-}
-
-.schedule-station-cell.is-primary {
-  font-weight: 900;
+  text-overflow: ellipsis;
 }
 
 thead .schedule-station-cell {
@@ -2351,19 +2363,55 @@ thead .schedule-station-cell {
   margin-top: 14px;
 }
 
+.station-board {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
 .station-map {
   display: grid;
   margin: 0;
   padding: 4px 0 0;
+  overflow: visible;
   list-style: none;
 }
 
 .station-map-item {
+  min-width: 0;
+  min-height: 44px;
+}
+
+.station-map-button {
   display: grid;
+  width: 100%;
+  min-height: 44px;
   grid-template-columns: 30px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  min-height: 44px;
+  padding: 0 10px 0 0;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background-color var(--motion-base) var(--ease-smooth), color var(--motion-base) var(--ease-smooth), box-shadow var(--motion-base) var(--ease-smooth);
+}
+
+.station-map-button:hover,
+.station-map-button:focus-visible {
+  background: rgba(27, 42, 65, 0.06);
+  box-shadow: var(--shadow-control);
+  outline: 0;
+}
+
+.station-map-button.is-active {
+  background: var(--color-navy);
+  color: var(--color-white);
+  box-shadow: var(--shadow-surface);
 }
 
 .station-map-track {
@@ -2383,6 +2431,10 @@ thead .schedule-station-cell {
   background: rgba(27, 42, 65, 0.3);
 }
 
+.station-map-button.is-active .station-map-track::before {
+  background: rgba(185, 191, 199, 0.9);
+}
+
 .station-map-item:first-child .station-map-track::before {
   top: 50%;
 }
@@ -2399,6 +2451,7 @@ thead .schedule-station-cell {
   border: 2px solid var(--color-navy);
   border-radius: 50%;
   background: var(--color-white);
+  transition: border-color var(--motion-base) var(--ease-smooth), background-color var(--motion-base) var(--ease-smooth);
 }
 
 .station-map-dot::after {
@@ -2407,15 +2460,283 @@ thead .schedule-station-cell {
   inset: 3px;
   border-radius: 50%;
   background: var(--color-navy);
+  transition: background-color var(--motion-base) var(--ease-smooth);
+}
+
+.station-map-button.is-active .station-map-dot {
+  border-color: var(--color-white);
+  background: var(--color-white);
+}
+
+.station-map-button.is-active .station-map-dot::after {
+  background: var(--color-navy);
 }
 
 .station-map-name {
   min-width: 0;
   overflow: hidden;
-  color: var(--color-ink);
+  color: inherit;
   font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.station-map-button.is-active .station-map-name {
+  font-weight: 800;
+}
+
+.station-map-main {
+  display: flex;
+  min-width: 0;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform var(--motion-base) var(--ease-smooth);
+}
+
+.station-map-button:hover .station-map-main,
+.station-map-button:focus-visible .station-map-main {
+  transform: translateX(2px);
+}
+
+.station-map-icons {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.station-map-title {
+  display: inline-flex;
+  min-width: 0;
+  gap: 7px;
+  align-items: center;
+}
+
+.station-map-service-icons {
+  color: rgba(27, 42, 65, 0.58);
+}
+
+.station-map-notice-icons {
+  margin-left: auto;
+}
+
+.station-map-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  background: currentColor;
+  color: rgba(27, 42, 65, 0.72);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.station-map-button.is-active .station-map-icon.is-ticket,
+.station-map-button.is-active .station-map-icon.is-toilet,
+.station-map-button.is-active .station-map-icon.is-building {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.station-map-icon.is-ticket {
+  mask-image: url("../icons/ticket.svg");
+  -webkit-mask-image: url("../icons/ticket.svg");
+}
+
+.station-map-icon.is-toilet {
+  mask-image: url("../icons/toilet.svg");
+  -webkit-mask-image: url("../icons/toilet.svg");
+}
+
+.station-map-icon.is-building {
+  mask-image: url("../icons/headquarters.svg");
+  -webkit-mask-image: url("../icons/headquarters.svg");
+}
+
+.station-map-icon.is-notice-remark,
+.station-map-icon.is-notice-warning {
+  mask-image: url("../icons/warning.svg");
+  -webkit-mask-image: url("../icons/warning.svg");
+}
+
+.station-map-icon.is-notice-info {
+  mask-image: url("../icons/information.svg");
+  -webkit-mask-image: url("../icons/information.svg");
+}
+
+.station-map-icon.is-notice-remark {
+  color: #be2424;
+}
+
+.station-map-icon.is-notice-warning {
+  color: #b58100;
+}
+
+.station-map-icon.is-notice-info {
+  color: #1f5f9f;
+}
+
+.station-detail {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(27, 42, 65, 0.12);
+  border-radius: var(--radius);
+  background: var(--color-white);
+  box-shadow: var(--shadow-surface);
+}
+
+.station-detail-media {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-soft);
+}
+
+.station-detail-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.station-detail-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.station-detail h3,
+.station-detail h4,
+.station-detail p {
+  margin: 0;
+}
+
+.station-detail h3 {
+  color: var(--color-navy);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.08;
+}
+
+.station-detail p {
+  max-width: 720px;
+  color: var(--color-muted);
+}
+
+.station-notices {
+  display: grid;
+  gap: 8px;
+}
+
+.station-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.station-notice-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  background: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.station-notice.is-remark {
+  border-color: rgba(190, 36, 36, 0.28);
+  background: #fff1f1;
+  color: #8a1f1f;
+}
+
+.station-notice.is-warning {
+  border-color: rgba(181, 129, 0, 0.28);
+  background: #fff7dc;
+  color: #755000;
+}
+
+.station-notice.is-info {
+  border-color: rgba(31, 95, 159, 0.24);
+  background: #edf6ff;
+  color: #1c4f83;
+}
+
+.station-notice.is-remark .station-notice-icon,
+.station-notice.is-warning .station-notice-icon {
+  mask-image: url("../icons/warning.svg");
+  -webkit-mask-image: url("../icons/warning.svg");
+}
+
+.station-notice.is-info .station-notice-icon {
+  mask-image: url("../icons/information.svg");
+  -webkit-mask-image: url("../icons/information.svg");
+}
+
+.station-departures {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.station-departures h4 {
+  color: var(--color-navy);
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.station-departures-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.station-departures-list li {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  column-gap: 9px;
+  row-gap: 4px;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(27, 42, 65, 0.08);
+}
+
+.station-departures-list time {
+  color: var(--color-ink);
+  font-family: var(--font-head);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.station-departure-direction {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-ink);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.station-departure-date,
+.station-departures-empty {
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 
@@ -3525,6 +3846,11 @@ thead .schedule-station-cell {
     transform-origin: left center;
   }
 
+  .station-detail-media,
+  .station-detail-body {
+    animation: rise-in 420ms var(--ease-emphasized) both;
+  }
+
   .station-options {
     animation: soft-pop 280ms var(--ease-emphasized) both;
     transform-origin: top center;
@@ -3703,6 +4029,7 @@ thead .schedule-station-cell {
   .job-benefits-panel,
   .job-benefits-grid,
   .job-contact-panel,
+  .station-board,
   .project-workspace,
   .job-grid,
   .timeline-item {
@@ -3951,13 +4278,27 @@ thead .schedule-station-cell {
   }
 
   .schedule-station-cell {
-    width: 150px;
-    min-width: 150px;
+    width: var(--schedule-station-width);
+    min-width: var(--schedule-station-width);
+    max-width: var(--schedule-station-width);
   }
 
-  .station-map-item {
+  .station-map-button {
     grid-template-columns: 26px minmax(0, 1fr);
     gap: 10px;
+  }
+
+  .station-detail-body {
+    padding: 16px;
+  }
+
+  .station-departures-list li {
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .station-departure-date {
+    grid-column: 3;
   }
 
   .route-card {

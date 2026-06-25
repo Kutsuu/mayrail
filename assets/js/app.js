@@ -20,23 +20,29 @@ const scheduleScrollPrev = document.querySelector("#schedule-scroll-prev");
 const scheduleScrollNext = document.querySelector("#schedule-scroll-next");
 const scheduleEmpty = document.querySelector("#schedule-empty");
 const stationMap = document.querySelector("#station-map");
+const stationDetail = document.querySelector("#station-detail");
 const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
 
 const INITIAL_RESULTS_LIMIT = 3;
 const RESULTS_INCREMENT = 2;
-const MAX_RESULTS_LIMIT = 5;
+const MAX_RESULTS_LIMIT = 7;
 const MIN_TRANSFER_MINUTES = 0;
 const DEFAULT_SCHEDULE_LOOKAHEAD_DAYS = 14;
 const MAX_PUBLISHED_SCHEDULE_DAYS = 5;
 const ROUTE_CACHE_TTL_MS = 2 * 60 * 1000;
 const ROUTE_CACHE_PREFIX = "mayrail-route-data-v1:";
+const STATION_INFO_SOURCE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRzwclBaHaOH_iz_0lnMnP7NdJ3EanB7_g2S06ncdOPa2SgG46gKI4fEYF3QP98tmx8WueF8bWlNHO8/pub?output=csv";
+const DEFAULT_STATION_IMAGE = "assets/img/placeholder.png";
+const MAX_STATION_DEPARTURES = 3;
 const ROUTE_LOAD_ERROR_MESSAGE = "Расписание сейчас недоступно. Пожалуйста, свяжитесь с оператором.";
 
 let routeData = { routes: [] };
+let stationDetails = new Map();
 let stations = [];
 let currentMatches = [];
 let visibleResultsLimit = INITIAL_RESULTS_LIMIT;
 let selectedScheduleDateValue = "";
+let selectedStationName = "";
 let isScheduleDragging = false;
 let scheduleDragStartX = 0;
 let scheduleDragStartScroll = 0;
@@ -60,6 +66,9 @@ async function init() {
       throw new Error("Route data is empty");
     }
     hydrateStations(routeData.routes);
+    if (stationMap || stationDetail) {
+      stationDetails = await loadStationDetails();
+    }
     renderPassengerTools();
     if (applySearchParams() && !isRedirectSearch) {
       runSearch();
@@ -186,6 +195,104 @@ function mergeRouteData(routeDataSets) {
   return {
     routes: routeDataSets.flatMap((data) => data.routes || [])
   };
+}
+
+async function loadStationDetails() {
+  try {
+    const text = await fetchTextWithCache(STATION_INFO_SOURCE);
+    return stationCsvToDetails(text);
+  } catch (error) {
+    console.error(error);
+    return new Map();
+  }
+}
+
+function stationCsvToDetails(csv) {
+  const rows = parseCsv(csv).filter((row) => row.some((cell) => cell.trim()));
+  if (!rows.length) return new Map();
+
+  const [headers, ...records] = rows;
+  const keys = headers.map(normalizeDataKey);
+  const details = new Map();
+
+  records.forEach((record) => {
+    const row = Object.fromEntries(keys.map((key, index) => [key, record[index]?.trim() || ""]));
+    const station = getRowValue(row, ["станция", "остановка", "название", "название станции", "station", "name"]);
+    if (!station) return;
+
+    const imageSources = getStationImageSources(getRowValue(row, ["фото", "фото станции", "фотография", "картинка", "изображение", "image", "photo", "picture"]));
+
+    details.set(normalizeStation(station), {
+      image: imageSources[0],
+      imageFallbacks: imageSources.slice(1),
+      description: getRowValue(row, ["описание", "описание станции", "текст", "информация о станции", "текст станции", "description", "content"]),
+      services: {
+        tickets: isTruthyCell(getRowValue(row, ["билеты", "билет", "tickets", "ticket"])),
+        toilet: isTruthyCell(getRowValue(row, ["туалет", "wc", "toilet"])),
+        building: isTruthyCell(getRowValue(row, ["здание вокзала", "вокзал", "здание", "station building", "building"]))
+      },
+      notices: [
+        buildStationNotice("remark", getRowValue(row, ["замечание", "remark", "note"])),
+        buildStationNotice("warning", getRowValue(row, ["предупреждение", "warning", "alert"])),
+        buildStationNotice("info", getRowValue(row, ["информация", "info", "information"]))
+      ].filter(Boolean)
+    });
+  });
+
+  return details;
+}
+
+function normalizeDataKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("ё", "е")
+    .replace(/[^0-9a-zа-я]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getRowValue(row, aliases) {
+  return aliases
+    .map(normalizeDataKey)
+    .map((key) => row[key])
+    .find((value) => String(value || "").trim()) || "";
+}
+
+function isTruthyCell(value) {
+  const normalized = normalizeDataKey(value);
+  return ["1", "true", "yes", "y", "да", "истина", "есть", "доступно", "x", "v", "ok"].includes(normalized)
+    || String(value || "").trim() === "+";
+}
+
+function getStationImageSources(value) {
+  const src = String(value || "").trim();
+  if (!src) return [DEFAULT_STATION_IMAGE];
+
+  const driveImage = getGoogleDriveImageSource(src);
+  if (driveImage) return [driveImage, DEFAULT_STATION_IMAGE];
+
+  if (/^(https?:|data:|\/|assets\/)/i.test(src)) return [src, DEFAULT_STATION_IMAGE];
+
+  return [
+    `assets/img/stations/${src}`,
+    `assets/img/${src}`,
+    `assets/img/legacy/${src}`,
+    DEFAULT_STATION_IMAGE
+  ];
+}
+
+function getGoogleDriveImageSource(src) {
+  const fileMatch = src.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  const idMatch = src.match(/[?&]id=([^&]+)/i);
+  const id = fileMatch?.[1] || idMatch?.[1];
+
+  return id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w1200` : "";
+}
+
+function buildStationNotice(type, text) {
+  const value = String(text || "").trim();
+  return value ? { type, text: value } : null;
 }
 
 function csvToRouteData(csv) {
@@ -1102,7 +1209,11 @@ function getStationIndex(stations, station) {
 
 function renderScheduleMatrix(schedule) {
   return `
-    <table class="schedule-direction-table">
+    <table class="schedule-direction-table" style="--schedule-table-width: ${190 + schedule.trains.length * 78}px">
+      <colgroup>
+        <col class="schedule-station-col">
+        ${schedule.trains.map(() => '<col class="schedule-train-col">').join("")}
+      </colgroup>
       <thead>
         <tr class="schedule-number-row schedule-number-row-top">
           <th class="schedule-station-cell"></th>
@@ -1112,7 +1223,7 @@ function renderScheduleMatrix(schedule) {
       <tbody>
         ${schedule.stations.map((station) => `
           <tr>
-            <th class="schedule-station-cell ${isPrimaryStation(station) ? "is-primary" : ""}">${escapeHtml(station)}</th>
+            <th class="schedule-station-cell">${escapeHtml(station)}</th>
             ${schedule.trains.map((train) => renderScheduleTimeCell(train, station)).join("")}
           </tr>
         `).join("")}
@@ -1154,22 +1265,226 @@ function getTripStationTime(trip, station) {
   return trip.departureTimes?.[station] || trip.arrivalTimes?.[station] || trip.stopTimes?.[station] || "";
 }
 
-function isPrimaryStation(station) {
-  return normalizeStation(station) === "первомайск";
-}
-
 function renderStationMap() {
   if (!stationMap) return;
 
   const orderedStations = getStationMapStations(routeData.routes);
+  if (!orderedStations.length) {
+    stationMap.innerHTML = "";
+    renderStationDetail("");
+    return;
+  }
+
+  if (!selectedStationName || !orderedStations.some((station) => normalizeStation(station) === normalizeStation(selectedStationName))) {
+    selectedStationName = getDefaultStationName(orderedStations);
+  }
+
   stationMap.innerHTML = orderedStations.map((station) => `
     <li class="station-map-item">
-      <span class="station-map-track" aria-hidden="true">
-        <span class="station-map-dot"></span>
-      </span>
-      <span class="station-map-name">${escapeHtml(station)}</span>
+      <button class="station-map-button ${normalizeStation(station) === normalizeStation(selectedStationName) ? "is-active" : ""}" type="button" data-station="${escapeHtml(station)}" aria-pressed="${normalizeStation(station) === normalizeStation(selectedStationName)}">
+        <span class="station-map-track" aria-hidden="true">
+          <span class="station-map-dot"></span>
+        </span>
+        <span class="station-map-main">
+          <span class="station-map-title">
+            <span class="station-map-name">${escapeHtml(station)}</span>
+            ${renderStationServiceIcons(getStationDetails(station))}
+          </span>
+          ${renderStationNoticeIcons(getStationDetails(station))}
+        </span>
+      </button>
     </li>
   `).join("");
+
+  stationMap.querySelectorAll(".station-map-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedStationName = button.dataset.station || "";
+      updateStationMapSelection();
+      renderStationDetail(selectedStationName);
+    });
+  });
+
+  renderStationDetail(selectedStationName);
+}
+
+function getDefaultStationName(orderedStations) {
+  return orderedStations.find((station) => normalizeStation(station) === "первомайск")
+    || orderedStations.find((station) => normalizeStation(station).startsWith("первомайск"))
+    || orderedStations[0];
+}
+
+function renderStationServiceIcons(details) {
+  const icons = [
+    details.services?.tickets ? renderStationMapIcon("ticket", "Билеты") : "",
+    details.services?.toilet ? renderStationMapIcon("toilet", "Туалет") : "",
+    details.services?.building ? renderStationMapIcon("building", "Здание вокзала") : ""
+  ].filter(Boolean);
+
+  if (!icons.length) return "";
+  return `<span class="station-map-icons station-map-service-icons">${icons.join("")}</span>`;
+}
+
+function renderStationNoticeIcons(details) {
+  const icons = (details.notices || [])
+    .map((notice) => renderStationMapIcon(`notice-${notice.type}`, getStationNoticeLabel(notice.type)));
+
+  if (!icons.length) return "";
+  return `<span class="station-map-icons station-map-notice-icons">${icons.join("")}</span>`;
+}
+
+function renderStationMapIcon(type, label) {
+  return `<span class="station-map-icon is-${escapeHtml(type)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></span>`;
+}
+
+function updateStationMapSelection() {
+  if (!stationMap) return;
+
+  stationMap.querySelectorAll(".station-map-button").forEach((button) => {
+    const isActive = normalizeStation(button.dataset.station) === normalizeStation(selectedStationName);
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function renderStationDetail(station) {
+  if (!stationDetail) return;
+
+  if (!station) {
+    stationDetail.innerHTML = "";
+    return;
+  }
+
+  const details = getStationDetails(station);
+  const departures = getNextStationDepartures(station);
+
+  stationDetail.innerHTML = `
+    <div class="station-detail-media">
+      <img src="${escapeHtml(details.image)}" data-fallback-candidates="${escapeHtml(details.imageFallbacks.join("|"))}" alt="">
+    </div>
+    <div class="station-detail-body">
+      <h3>${escapeHtml(station)}</h3>
+      <p>${escapeHtml(details.description)}</p>
+      ${renderStationNotices(details.notices)}
+      <div class="station-departures">
+        <h4>Следующие отправления</h4>
+        ${renderStationDepartures(departures)}
+      </div>
+    </div>
+  `;
+}
+
+function getStationDetails(station) {
+  const customDetails = findStationDetails(station);
+
+  return {
+    image: customDetails.image || DEFAULT_STATION_IMAGE,
+    imageFallbacks: customDetails.imageFallbacks || [],
+    description: customDetails.description || "Информация о станции будет добавлена позже.",
+    services: customDetails.services || {},
+    notices: customDetails.notices || []
+  };
+}
+
+function findStationDetails(station) {
+  const normalized = normalizeStation(station);
+  const exactDetails = stationDetails.get(normalized);
+  if (exactDetails) return exactDetails;
+
+  const partialMatch = [...stationDetails.entries()]
+    .find(([key]) => key.startsWith(normalized) || normalized.startsWith(key));
+
+  return partialMatch?.[1] || {};
+}
+
+function renderStationNotices(notices = []) {
+  if (!notices.length) return "";
+
+  return `
+    <div class="station-notices">
+      ${notices.map((notice) => `
+        <div class="station-notice is-${escapeHtml(notice.type)}">
+          <span class="station-notice-icon" aria-hidden="true"></span>
+          <span>${escapeHtml(notice.text)}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getStationNoticeLabel(type) {
+  if (type === "remark") return "Замечание";
+  if (type === "warning") return "Предупреждение";
+  return "Информация";
+}
+
+function getNextStationDepartures(station, limit = MAX_STATION_DEPARTURES) {
+  const normalizedStation = normalizeStation(station);
+  const now = new Date();
+  const dates = getPublishedScheduleDates();
+  const dateCandidates = dates.length ? dates : [startOfCalendarDay(now)];
+  const departures = [];
+
+  dateCandidates.forEach((date) => {
+    routeData.routes.forEach((route) => {
+      if (!route.stops?.length) return;
+
+      const stationName = route.stops.find((stop) => normalizeStation(stop) === normalizedStation);
+      if (!stationName) return;
+
+      (route.trips || []).forEach((trip) => {
+        if (!tripRunsOnDate(trip, date)) return;
+
+        const time = getTripStationDepartureTime(route, trip, stationName);
+        if (!time) return;
+
+        const dateTime = getDateTimeForDate(date, time);
+        if (dateTime < now) return;
+
+        departures.push({
+          dateTime,
+          time,
+          line: route.line,
+          direction: getStationDepartureDirection(route)
+        });
+      });
+    });
+  });
+
+  return departures
+    .sort((a, b) => a.dateTime - b.dateTime)
+    .slice(0, limit);
+}
+
+function getTripStationDepartureTime(route, trip, station) {
+  const stationIndex = route.stops.findIndex((stop) => normalizeStation(stop) === normalizeStation(station));
+
+  if (stationIndex === -1 || stationIndex === route.stops.length - 1) return "";
+  if (stationIndex === 0) return trip.departureTimes?.[station] || trip.stopTimes?.[station] || trip.depart || "";
+
+  return trip.departureTimes?.[station] || trip.stopTimes?.[station] || "";
+}
+
+function getStationDepartureDirection(route) {
+  return route.direction || `${route.stops[0]} - ${route.stops.at(-1)}`;
+}
+
+function renderStationDepartures(departures) {
+  if (!departures.length) {
+    return '<div class="station-departures-empty">Ближайшие отправления не найдены.</div>';
+  }
+
+  return `
+    <ol class="station-departures-list">
+      ${departures.map((departure) => `
+        <li>
+          <time>${escapeHtml(formatClockForDisplay(departure.time))}</time>
+          <span class="line-pill">${escapeHtml(departure.line)}</span>
+          <span class="station-departure-direction">${escapeHtml(departure.direction)}</span>
+          ${isSameCalendarDay(departure.dateTime, new Date()) ? "" : `<span class="station-departure-date">${escapeHtml(formatShortDate(departure.dateTime))}</span>`}
+        </li>
+      `).join("")}
+    </ol>
+  `;
 }
 
 function getStationMapStations(routes) {
@@ -1221,10 +1536,11 @@ function runsOnDateValue(days, date) {
 }
 
 function findRouteMatches(from, to, time, timeMode, dateOffset) {
-  const directMatches = routeData.routes
-    .flatMap((route) => buildRouteMatches(route, from, to, time, timeMode, dateOffset))
+  const directLegs = buildDirectRouteLegs(from, to, dateOffset);
+  const directMatches = directLegs
+    .filter((match) => isMatchInTimeWindow(match, time, timeMode))
     .map((match) => ({ ...match, matchType: "direct", legs: [match] }));
-  const transferMatches = buildTransferMatches(from, to, time, timeMode, dateOffset);
+  const transferMatches = directLegs.length ? [] : buildTransferMatches(from, to, time, timeMode, dateOffset);
   const matches = [...directMatches, ...transferMatches];
 
   return matches
@@ -1290,9 +1606,8 @@ function updateSearchUrl() {
   window.history.replaceState(null, "", url);
 }
 
-function buildRouteMatches(route, from, to, time, timeMode, dateOffset = 0) {
-  return buildRouteLegs(route, from, to, dateOffset)
-    .filter((match) => isMatchInTimeWindow(match, time, timeMode));
+function buildDirectRouteLegs(from, to, dateOffset = 0) {
+  return routeData.routes.flatMap((route) => buildRouteLegs(route, from, to, dateOffset));
 }
 
 function buildRouteLegs(route, from, to, dateOffset = 0) {
