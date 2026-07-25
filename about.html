@@ -28,62 +28,8 @@
         <div class="container section-head">
           <h2>Проекты</h2>
         </div>
-        <div class="container project-workspace">
-          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-active" checked>
-          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-archive">
-          <input class="project-tab-input" type="radio" name="project-sheet" id="project-sheet-planned">
-
-          <div class="project-sheet-tabs" aria-label="Листы проектов">
-            <label for="project-sheet-active">В работе</label>
-            <label for="project-sheet-archive">Архив</label>
-            <label for="project-sheet-planned">Планы</label>
-          </div>
-
-          <div class="project-sheet-panels">
-            <div class="project-sheet-panel project-sheet-active">
-              <article class="project-row">
-                <img src="assets/img/signals.png" alt="">
-                <div>
-                  <h3>Инфраструктура</h3>
-                  <p>Информация о проектах инфраструктуры будет размещаться здесь.</p>
-                </div>
-              </article>
-              <article class="project-row">
-                <img src="assets/img/station-display.jpg" alt="">
-                <div>
-                  <h3>Пассажирская информация</h3>
-                  <p>Раздел для проектов, связанных с расписанием, информированием и станциями.</p>
-                </div>
-              </article>
-              <article class="project-row">
-                <img src="assets/img/rail-cart.jpg" alt="">
-                <div>
-                  <h3>Подвижной состав</h3>
-                  <p>Информация о проектах подвижного состава будет обновляться по мере готовности.</p>
-                </div>
-              </article>
-            </div>
-
-            <div class="project-sheet-panel project-sheet-archive">
-              <article class="project-row">
-                <img src="assets/img/station-display.jpg" alt="">
-                <div>
-                  <h3>Архив проектов</h3>
-                  <p>Информация о выполненных проектах пока не опубликована.</p>
-                </div>
-              </article>
-            </div>
-
-            <div class="project-sheet-panel project-sheet-planned">
-              <article class="project-row">
-                <img src="assets/img/signals.png" alt="">
-                <div>
-                  <h3>Будущие проекты</h3>
-                  <p>Информация о запланированных проектах будет размещаться здесь.</p>
-                </div>
-              </article>
-            </div>
-          </div>
+        <div class="container project-workspace" data-project-workspace>
+          <div class="project-sheet-panels" data-project-panels></div>
         </div>
       </section>
 
@@ -91,7 +37,7 @@
         <div class="container section-head">
           <h2>История</h2>
         </div>
-        <div class="container timeline">
+        <div class="container timeline" data-history-timeline>
           <article class="timeline-item">
             <img src="assets/img/legacy/history-early.jpg" alt="">
             <div>
@@ -99,7 +45,8 @@
               <p>Точной даты, и даже года создания Первомайских железных дорог назвать невозможно. В этот период эксплуатировался различный железнодорожный транспорт от "поездов метро" до "трамваев". Не было определенных стандартов и общей системы. Основными инструментами была тачка и подушка, чтобы пассажиру было помягче. Иногда приходилось играться с дополнительными модификациями, например лежащего стула, который создавал стенку, и помогал отделить грузовой отсек от пассажирского места. В редких случаях удавалось ставить даже радио Makita. Основным бортовым питанием в то время были различные ягоды с участка такие как красная и черная смородина, а также печеньки и конфеты. На сохранившемся с тех времен фото запечатлена учебная авария "трамвая" с велосипедом.</p>
             </div>
           </article>
-          <article class="timeline-item timeline-item-text">
+          <article class="timeline-item">
+            <img class="is-placeholder" src="assets/img/placeholder.png" alt="">
             <div>
               <h3>2020-2022</h3>
               <p>В этот период на Первомайских железных дорогах был кризис в связи с пандемией COVID-19. Первомайские железные дороги не функционировали, однако в этот период приобреталось много знаний в железнодорожной и транспортной отрасли, которые в будущем сильно помогли в развитии.</p>
@@ -121,12 +68,14 @@
             </div>
           </article>
           <article class="timeline-item">
+            <img class="is-placeholder" src="assets/img/placeholder.png" alt="">
             <div>
               <h3>Лето 2024</h3>
               <p>Здесь</p>
             </div>
           </article>
           <article class="timeline-item">
+            <img class="is-placeholder" src="assets/img/placeholder.png" alt="">
             <div>
               <h3>Лето 2025</h3>
               <p>Здесь</p>
@@ -138,6 +87,10 @@
 
     <div data-site-footer></div>
 
+    <script src="assets/js/firebase-content.js"></script>
+    <script src="data/projects.js"></script>
     <script src="assets/js/layout.js"></script>
+    <script src="assets/js/projects.js"></script>
+    <script src="assets/js/site-sections.js"></script>
   </body>
 </html>

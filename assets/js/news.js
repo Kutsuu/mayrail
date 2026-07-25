@@ -36,6 +36,21 @@
   async function loadNewsPosts() {
     const source = window.MAYRAIL_NEWS || {};
 
+    if (source.kind) {
+      const client = window.MAYRAIL_FIREBASE_CONTENT;
+      if (!client) throw new Error("Firebase content client is unavailable");
+      const items = await client.load(source.kind);
+      return items.map((item) => ({
+        id: item.id,
+        published: item.published === true,
+        title: String(item.title || "").trim(),
+        date: String(item.date || "").trim(),
+        image: normalizeNewsImageUrl(item.image),
+        imageAlt: String(item.imageAlt || "").trim(),
+        content: normalizeNewsText(item.body)
+      })).filter(isPublishedPost).sort(sortPostsByDate);
+    }
+
     if (source.source) {
       const text = await fetchTextWithCache(source.source);
       return csvToNewsPosts(text).filter(isPublishedPost).sort(sortPostsByDate);
@@ -56,15 +71,18 @@
       return cached.text;
     }
 
-    const response = await fetch(url, { cache: "no-store" });
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`News request failed: ${response.status} (${url})`);
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(`News request failed: ${response.status} (${url})`);
+      }
+      writeNewsCache(url, text);
+      return text;
+    } catch (error) {
+      if (cached?.text) return cached.text;
+      throw error;
     }
-
-    writeNewsCache(url, text);
-    return text;
   }
 
   function readNewsCache(url) {

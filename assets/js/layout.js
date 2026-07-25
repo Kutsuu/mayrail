@@ -1,9 +1,10 @@
 const currentPage = getCurrentPage();
-const PAGE_TRANSITION_ENTER_MS = 1640;
-const PAGE_TRANSITION_LEAVE_MS = 1480;
+const PAGE_TRANSITION_ENTER_MS = 620;
+const PAGE_TRANSITION_LEAVE_MS = 560;
 
 renderSiteHeader();
 renderSiteFooter();
+void hydrateSiteFooter();
 renderPageTransition();
 setupMobileMenu();
 setupHeaderScrollState();
@@ -23,8 +24,7 @@ function renderSiteHeader() {
       pages: ["passengers.html", "search.html"],
       sections: [
         { href: "passengers#routes", label: "Поиск маршрута" },
-        { href: "passengers#schedule", label: "Расписание" },
-        { href: "passengers#stations", label: "Станции" }
+        { href: "passengers#schedule", label: "Расписание" }
       ]
     },
     {
@@ -33,7 +33,7 @@ function renderSiteHeader() {
       pages: ["information.html"],
       sections: [
         { href: "information#tickets", label: "Билеты" },
-        { href: "information#contacts", label: "Контакты" }
+        { href: "information#cargo", label: "Грузовые перевозки" }
       ]
     },
     {
@@ -222,27 +222,59 @@ function renderSiteFooter() {
         <div class="footer-info" aria-label="Справочная информация">
           <div class="footer-block">
             <span>Период работы</span>
-            <strong>Отсутствует.</strong>
+            <strong data-footer-company="workPeriod">с 26 июля<br>по 1 августа 2026 года</strong>
           </div>
           <div class="footer-block">
             <span>Часы работы</span>
-            <strong>ежедневно<br>с 9:00 до 21:00</strong>
+            <strong data-footer-company="openingHours">ежедневно<br>с 9:00 до 21:00</strong>
           </div>
           <div class="footer-block">
             <span>Контактная информация</span>
-            <a class="footer-contact-line footer-mail" href="mailto:info@mayrail.xyz">
+            <a class="footer-contact-line footer-mail" href="mailto:info@mayrail.xyz" data-footer-company-link="email">
               <span class="contact-icon contact-icon-mail" aria-hidden="true"></span>
-              <strong>info@mayrail.xyz</strong>
+              <strong data-footer-company="email">info@mayrail.xyz</strong>
             </a>
             <div class="footer-contact-line">
               <span class="contact-icon contact-icon-headquarters" aria-hidden="true"></span>
-              <strong>ст. Первомайск</strong>
+              <strong data-footer-company="location">ст. Первомайск</strong>
             </div>
           </div>
         </div>
       </div>
     </footer>
   `;
+}
+
+async function hydrateSiteFooter() {
+  const client = window.MAYRAIL_FIREBASE_CONTENT;
+  if (!client) return;
+  try {
+    const items = await client.load("companyInfo");
+    const values = new Map(
+      items
+        .filter(item => item?.published === true && item.category)
+        .sort((left, right) => Number(left.order || 0) - Number(right.order || 0))
+        .map(item => [item.category, String(item.body || "").trim()])
+    );
+    document.querySelectorAll("[data-footer-company]").forEach(element => {
+      const value = values.get(element.dataset.footerCompany);
+      if (value) setMultilineText(element, value);
+    });
+    const email = values.get("email");
+    const emailLink = document.querySelector('[data-footer-company-link="email"]');
+    if (email && emailLink) emailLink.href = `mailto:${email}`;
+  } catch (error) {
+    console.error("Footer content is unavailable", error);
+  }
+}
+
+function setMultilineText(element, value) {
+  const lines = String(value || "").split(/\r?\n/);
+  element.replaceChildren();
+  lines.forEach((line, index) => {
+    if (index) element.append(document.createElement("br"));
+    element.append(document.createTextNode(line));
+  });
 }
 
 function renderPageTransition() {
@@ -294,6 +326,7 @@ function setupImageFallback() {
   const applyFallback = (image) => {
     if (!(image instanceof HTMLImageElement)) return;
     if (image.getAttribute("src") === fallbackSrc) {
+      image.classList.add("is-placeholder");
       image.dataset.fallbackApplied = "true";
       return;
     }
@@ -315,6 +348,7 @@ function setupImageFallback() {
     }
 
     image.dataset.fallbackApplied = "true";
+    image.classList.add("is-placeholder");
     image.src = fallbackSrc;
   };
 
@@ -503,7 +537,7 @@ function finishEnterTransitionWhenReady(transition) {
   };
 
   const handleAnimationEnd = (event) => {
-    if (event.animationName !== "page-transition-shell-out") return;
+    if (event.animationName !== "page-transition-fade-out") return;
     transition?.removeEventListener("animationend", handleAnimationEnd);
     finish();
   };

@@ -19,6 +19,7 @@ const scheduleScrollActions = document.querySelector(".schedule-scroll-actions")
 const scheduleScrollPrev = document.querySelector("#schedule-scroll-prev");
 const scheduleScrollNext = document.querySelector("#schedule-scroll-next");
 const scheduleEmpty = document.querySelector("#schedule-empty");
+const publicDataWarning = document.querySelector("#public-data-warning");
 const stationMap = document.querySelector("#station-map");
 const stationDetail = document.querySelector("#station-detail");
 const isRedirectSearch = routeForm.dataset.searchMode === "redirect";
@@ -46,6 +47,7 @@ let selectedStationName = "";
 let isScheduleDragging = false;
 let scheduleDragStartX = 0;
 let scheduleDragStartScroll = 0;
+let publicScheduleUnsubscribe = null;
 
 const stationPickers = new Map([
   [fromInput, { list: fromOptions, activeIndex: 0, forceAll: false }],
@@ -62,7 +64,7 @@ async function init() {
 
   try {
     routeData = await loadRouteData();
-    if (!routeData.routes?.length) {
+    if (!routeData.routes?.length && !usesFirebaseScheduleSource()) {
       throw new Error("Route data is empty");
     }
     hydrateStations(routeData.routes);
@@ -77,11 +79,19 @@ async function init() {
     renderEmpty(ROUTE_LOAD_ERROR_MESSAGE);
     renderScheduleError(ROUTE_LOAD_ERROR_MESSAGE);
     console.error(error);
+  } finally {
+    startFirebaseScheduleSubscription();
   }
 }
 
 async function loadRouteData() {
   const source = routeForm.dataset.routesSource || "data/routes/";
+  const normalizedSource = source.trim().toLowerCase();
+
+  if (usesFirebaseScheduleSource()) {
+    return loadFirebaseRouteData();
+  }
+
   const sourceUrl = new URL(source, window.location.href);
   const sourcePath = sourceUrl.pathname.toLowerCase();
 
@@ -94,6 +104,207 @@ async function loadRouteData() {
   }
 
   return loadRouteCsv(sourceUrl);
+}
+
+function usesFirebaseScheduleSource() {
+  const source = String(routeForm.dataset.routesSource || "").trim().toLowerCase();
+  return ["firebase", "firestore", "portal"].includes(source);
+}
+
+async function loadFirebaseRouteData() {
+  const client = window.MAYRAIL_FIREBASE_CONTENT;
+  if (!client?.loadPassengerSchedules) {
+    throw new Error("Firebase passenger schedule client is unavailable");
+  }
+
+  const schedules = await client.loadPassengerSchedules();
+  if (publicDataWarning) {
+    const cached = client.getScheduleSource?.() === "cache";
+    publicDataWarning.hidden = !cached;
+    publicDataWarning.textContent = cached
+      ? "Показаны сохранённые данные. Обновление сейчас недоступно."
+      : "";
+  }
+  return publicSchedulesToRouteData(schedules);
+}
+
+function startFirebaseScheduleSubscription() {
+  const client = window.MAYRAIL_FIREBASE_CONTENT;
+  if (
+    publicScheduleUnsubscribe ||
+    !usesFirebaseScheduleSource() ||
+    typeof client?.subscribePassengerSchedules !== "function"
+  ) return;
+
+  publicScheduleUnsubscribe = client.subscribePassengerSchedules(
+    (schedules, metadata = {}) => {
+      routeData = publicSchedulesToRouteData(schedules);
+      hydrateStations(routeData.routes, { preserveInputs: true });
+      if (publicDataWarning) {
+        publicDataWarning.hidden = !metadata.fromCache;
+        publicDataWarning.textContent = metadata.fromCache
+          ? "Показаны сохранённые данные. Обновление сейчас недоступно."
+          : "";
+      }
+      renderPassengerTools();
+      if (
+        !isRedirectSearch &&
+        results &&
+        !results.hidden &&
+        fromInput.value.trim() &&
+        toInput.value.trim()
+      ) {
+        runSearch();
+      }
+    },
+    (error) => {
+      if (publicDataWarning) {
+        publicDataWarning.hidden = false;
+        publicDataWarning.textContent =
+          "Не удалось обновить расписание. Показаны последние доступные данные.";
+      }
+      console.error("Realtime schedule update is unavailable", error);
+    }
+  );
+}
+
+function publicSchedulesToRouteData(schedules) {
+  const source = Array.isArray(schedules) ? schedules : [];
+  return {
+    routes: source
+      .map((schedule, index) => publicScheduleToRoute(schedule, index))
+      .filter(Boolean)
+  };
+}
+
+function publicScheduleToRoute(schedule, index) {
+  if (!schedule || schedule.passenger !== true) return null;
+
+  const trainNumber = String(schedule.trainNumber || schedule.number || "").trim();
+  const serviceDate = String(schedule.date || "").trim();
+  if (!/^\d{1,4}$/.test(trainNumber) || !parseInputDateValue(serviceDate)) {
+    return null;
+  }
+  const rawStops = Array.isArray(schedule.stops) ? schedule.stops : [];
+  const stops = applyPublicScheduleOperations(rawStops, schedule.operations)
+    .map((stop) => ({
+      station: String(stop.station || "").trim(),
+      arrival: normalizeTimeCell(stop.arrival),
+      departure: normalizeTimeCell(stop.departure),
+      track: String(stop.track || "").trim(),
+      scheduledStop: stop.scheduledStop !== false
+    }))
+    .filter((stop) => stop.station && (stop.arrival || stop.departure));
+
+  if (!trainNumber || stops.length < 2) return null;
+
+  const trip = {
+    ...buildPublicScheduleTrip(stops, serviceDate),
+    notices: normalizePublicTrainNotices(schedule.notices)
+  };
+  if (!trip.depart || !trip.arrive) return null;
+
+  const routeStops = stops.map((stop) => stop.station);
+  const startStation = String(schedule.startStation || routeStops[0] || "").trim();
+  const endStation = String(schedule.endStation || routeStops.at(-1) || "").trim();
+
+  return {
+    id: `firebase-${schedule.id || `${schedule.date || "date"}-${trainNumber}-${index + 1}`}`,
+    line: trainNumber,
+    direction: endStation || `${startStation} - ${endStation}`,
+    mode: "train",
+    service: schedule.type || "Пассажирский поезд",
+    from: startStation || routeStops[0],
+    to: endStation || routeStops.at(-1),
+    stops: routeStops,
+    trips: [trip]
+  };
+}
+
+function normalizePublicTrainNotices(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 20).flatMap((notice) => {
+    const type = notice?.type === "alert"
+      ? "alert"
+      : notice?.type === "information"
+        ? "information"
+        : "";
+    const text = String(notice?.text || "").trim().slice(0, 1000);
+    return type && text ? [{ type, text }] : [];
+  });
+}
+
+function applyPublicScheduleOperations(stops, operations = []) {
+  const adapter = window.MAYRAIL_PUBLIC_SCHEDULE;
+  if (!adapter?.applyOperations) {
+    throw new Error("Public schedule adapter is unavailable");
+  }
+  return adapter.applyOperations(stops, operations);
+}
+
+function buildPublicScheduleTrip(stops, serviceDate) {
+  const stopTimes = {};
+  const arrivalTimes = {};
+  const departureTimes = {};
+  const platforms = {};
+  const stopEntries = [];
+  const departureCandidates = [];
+  const arrivalCandidates = [];
+  let previousTime = "";
+
+  stops.forEach((stop) => {
+    const arrival = alignTimeToPrevious(stop.arrival, previousTime);
+    const departure = alignTimeToPrevious(stop.departure, arrival || previousTime);
+    const publicTime = departure || arrival;
+    stopEntries.push({
+      station: stop.station,
+      arrival,
+      departure,
+      track: stop.track || ""
+    });
+
+    if (arrival) {
+      arrivalTimes[stop.station] = arrival;
+      arrivalCandidates.push(arrival);
+    }
+
+    if (departure) {
+      departureTimes[stop.station] = departure;
+      departureCandidates.push(departure);
+    }
+
+    if (publicTime) {
+      stopTimes[stop.station] = publicTime;
+      previousTime = publicTime;
+    }
+
+    if (stop.track) {
+      platforms[stop.station] = stop.track;
+    }
+  });
+
+  const periodStart = parseInputDateValue(serviceDate);
+  const periodEnd = periodStart
+    ? new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate(), 23, 59, 59, 999)
+    : null;
+
+  return {
+    depart: departureCandidates[0] || Object.values(stopTimes)[0] || "",
+    arrive: arrivalCandidates[arrivalCandidates.length - 1] || Object.values(stopTimes).at(-1) || "",
+    platform: platforms[stops[0]?.station] || Object.values(platforms)[0] || "—",
+    platforms,
+    days: "daily",
+    status: "По расписанию",
+    price: "",
+    note: "",
+    warning: "",
+    periodStart,
+    periodEnd,
+    stopTimes,
+    arrivalTimes,
+    departureTimes,
+    stopEntries
+  };
 }
 
 async function loadRouteCsv(sourceUrl) {
@@ -126,15 +337,18 @@ async function fetchTextWithCache(url) {
     return cached.text;
   }
 
-  const response = await fetch(url, { cache: "no-store" });
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(`Data request failed: ${response.status} (${url})`);
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Data request failed: ${response.status} (${url})`);
+    }
+    writeRouteCache(url, text);
+    return text;
+  } catch (error) {
+    if (cached?.text) return cached.text;
+    throw error;
   }
-
-  writeRouteCache(url, text);
-  return text;
 }
 
 function readRouteCache(url) {
@@ -169,9 +383,9 @@ function getRouteCacheKey(url) {
 function normalizeRouteManifest(manifest) {
   const entries = Array.isArray(manifest)
     ? manifest
-    : Array.isArray(manifest.files)
+    : Array.isArray(manifest?.files)
       ? manifest.files
-      : Array.isArray(manifest.schedules)
+      : Array.isArray(manifest?.schedules)
         ? manifest.schedules
         : [];
 
@@ -182,9 +396,10 @@ function normalizeRouteManifest(manifest) {
 
 function namespaceRouteData(data, sourceIndex) {
   const namespace = `schedule-${sourceIndex + 1}`;
+  const routes = Array.isArray(data?.routes) ? data.routes : [];
 
   return {
-    routes: (data.routes || []).map((route) => ({
+    routes: routes.map((route) => ({
       ...route,
       id: `${namespace}-${route.id || route.line || route.direction || "route"}`
     }))
@@ -192,8 +407,11 @@ function namespaceRouteData(data, sourceIndex) {
 }
 
 function mergeRouteData(routeDataSets) {
+  const sources = Array.isArray(routeDataSets) ? routeDataSets : [];
   return {
-    routes: routeDataSets.flatMap((data) => data.routes || [])
+    routes: sources.flatMap((data) =>
+      Array.isArray(data?.routes) ? data.routes : []
+    )
   };
 }
 
@@ -806,16 +1024,34 @@ function parseLocalDateTime(value) {
 
 function parseDateTimeParts(day, month, year, hours = "0", minutes = "0") {
   const fullYear = Number(year) < 100 ? 2000 + Number(year) : Number(year);
-  const date = new Date(fullYear, Number(month) - 1, Number(day), Number(hours), Number(minutes));
-
-  if (Number.isNaN(date.getTime())) return null;
+  const monthNumber = Number(month);
+  const dayNumber = Number(day);
+  const hoursNumber = Number(hours);
+  const minutesNumber = Number(minutes);
+  const date = new Date(
+    fullYear,
+    monthNumber - 1,
+    dayNumber,
+    hoursNumber,
+    minutesNumber
+  );
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== fullYear ||
+    date.getMonth() !== monthNumber - 1 ||
+    date.getDate() !== dayNumber ||
+    date.getHours() !== hoursNumber ||
+    date.getMinutes() !== minutesNumber
+  ) return null;
   return date;
 }
 
 function normalizeTimeCell(value) {
   const text = String(value || "").trim();
-  const match = text.match(/\b\d{1,2}:\d{2}\b/);
-  return match ? match[0].padStart(5, "0") : "";
+  const match = text.match(/\b(\d{1,2}):([0-5]\d)\b/);
+  return match && Number(match[1]) <= 23
+    ? `${match[1].padStart(2, "0")}:${match[2]}`
+    : "";
 }
 
 function alignTimeToPrevious(time, previousTime) {
@@ -831,13 +1067,18 @@ function alignTimeToPrevious(time, previousTime) {
   return minutesToServiceClock(minutes);
 }
 
-function hydrateStations(routes) {
-  stations = [...new Set(routes.flatMap((route) => route.stops))]
+function hydrateStations(routes, { preserveInputs = false } = {}) {
+  const routeItems = Array.isArray(routes) ? routes : [];
+  stations = [...new Set(routeItems.flatMap((route) =>
+    Array.isArray(route?.stops) ? route.stops : []
+  ))]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b, "ru"));
 
-  fromInput.value = "";
-  toInput.value = "";
+  if (!preserveInputs) {
+    fromInput.value = "";
+    toInput.value = "";
+  }
 }
 
 function setupStationPicker(input) {
@@ -1119,13 +1360,14 @@ function getPublishedScheduleDates() {
 
   if (!ranges.length) return [];
 
-  const firstDate = new Date(Math.min(...ranges.map((range) => range.start.getTime())));
-  const lastPublishedDate = new Date(Math.max(...ranges.map((range) => range.end.getTime())));
-  const lastAllowedDate = addCalendarDays(firstDate, MAX_PUBLISHED_SCHEDULE_DAYS - 1);
-  const lastDate = lastPublishedDate < lastAllowedDate ? lastPublishedDate : lastAllowedDate;
+  const window = getSchedulePublicationWindow(ranges, today);
   const dates = [];
 
-  for (let date = new Date(firstDate); date <= lastDate; date = addCalendarDays(date, 1)) {
+  for (
+    let date = new Date(window.start);
+    date <= window.end;
+    date = addCalendarDays(date, 1)
+  ) {
     if (buildScheduleMatrix(date).trains.length) {
       dates.push(new Date(date));
     }
@@ -1134,10 +1376,33 @@ function getPublishedScheduleDates() {
   return dates;
 }
 
-function getTripPublicationRange(trip, today) {
-  let start = trip.periodStart ? startOfCalendarDay(trip.periodStart) : new Date(today);
-  if (start < today) start = new Date(today);
+function getSchedulePublicationWindow(ranges, today) {
+  const currentAndFuture = ranges.filter((range) => range.end >= today);
+  if (currentAndFuture.length) {
+    const firstDate = new Date(Math.min(...currentAndFuture.map((range) =>
+      Math.max(range.start.getTime(), today.getTime())
+    )));
+    const lastPublishedDate = new Date(Math.max(...currentAndFuture.map((range) =>
+      range.end.getTime()
+    )));
+    const lastAllowedDate = addCalendarDays(firstDate, MAX_PUBLISHED_SCHEDULE_DAYS - 1);
+    return {
+      start: firstDate,
+      end: lastPublishedDate < lastAllowedDate ? lastPublishedDate : lastAllowedDate
+    };
+  }
 
+  const lastDate = new Date(Math.max(...ranges.map((range) => range.end.getTime())));
+  const firstPublishedDate = new Date(Math.min(...ranges.map((range) => range.start.getTime())));
+  const firstAllowedDate = addCalendarDays(lastDate, 1 - MAX_PUBLISHED_SCHEDULE_DAYS);
+  return {
+    start: firstPublishedDate > firstAllowedDate ? firstPublishedDate : firstAllowedDate,
+    end: lastDate
+  };
+}
+
+function getTripPublicationRange(trip, today) {
+  const start = trip.periodStart ? startOfCalendarDay(trip.periodStart) : new Date(today);
   const end = trip.periodEnd
     ? startOfCalendarDay(trip.periodEnd)
     : addCalendarDays(start, DEFAULT_SCHEDULE_LOOKAHEAD_DAYS - 1);
@@ -1251,18 +1516,17 @@ function renderScheduleTrainHead(train, rowDirection) {
 function renderScheduleTimeCell(train, station) {
   const { route, trip, direction } = train;
   const directionClass = `is-${direction}`;
-  const servesStation = route.stops.some((stop) => normalizeStation(stop) === normalizeStation(station));
-  const time = servesStation ? getTripStationTime(trip, station) : "";
+  const stationIndex = route.stops.findIndex((stop) =>
+    normalizeStation(stop) === normalizeStation(station)
+  );
+  const entry = stationIndex >= 0 ? getTripStopAtIndex(route, trip, stationIndex) : null;
+  const time = entry?.departure || entry?.arrival || "";
 
   if (!time) {
     return `<td class="schedule-time-cell schedule-empty-cell ${directionClass}"></td>`;
   }
 
   return `<td class="schedule-time-cell ${directionClass}"><time>${escapeHtml(formatClockForDisplay(time))}</time></td>`;
-}
-
-function getTripStationTime(trip, station) {
-  return trip.departureTimes?.[station] || trip.arrivalTimes?.[station] || trip.stopTimes?.[station] || "";
 }
 
 function renderStationMap() {
@@ -1489,7 +1753,13 @@ function renderStationDepartures(departures) {
 
 function getStationMapStations(routes) {
   const primaryRoute = [...routes].sort((a, b) => b.stops.length - a.stops.length)[0];
-  const orderedStations = primaryRoute ? [...primaryRoute.stops] : [];
+  const orderedStations = [];
+
+  (primaryRoute?.stops || []).forEach((station) => {
+    if (!orderedStations.some((item) => normalizeStation(item) === normalizeStation(station))) {
+      orderedStations.push(station);
+    }
+  });
 
   routes.forEach((route) => {
     route.stops.forEach((station) => {
@@ -1612,35 +1882,52 @@ function buildDirectRouteLegs(from, to, dateOffset = 0) {
 
 function buildRouteLegs(route, from, to, dateOffset = 0) {
   const normalizedStops = route.stops.map(normalizeStation);
-  const fromIndex = normalizedStops.indexOf(from);
-  const toIndex = normalizedStops.indexOf(to);
-
-  if (fromIndex === -1 || toIndex === -1 || fromIndex >= toIndex) return [];
+  const indexPairs = normalizedStops.flatMap((station, fromIndex) => {
+    if (station !== from) return [];
+    return normalizedStops.flatMap((candidate, toIndex) =>
+      candidate === to && toIndex > fromIndex ? [{ fromIndex, toIndex }] : []
+    );
+  });
 
   return route.trips
     .filter((trip) => runsOnSelectedDay(trip.days, dateOffset))
-    .map((trip) => {
+    .flatMap((trip) => indexPairs.map(({ fromIndex, toIndex }) => {
       const fromStation = route.stops[fromIndex];
       const toStation = route.stops[toIndex];
-      const depart = trip.departureTimes?.[fromStation] || trip.stopTimes?.[fromStation] || trip.depart;
-      const arrive = trip.arrivalTimes?.[toStation] || trip.stopTimes?.[toStation] || trip.arrive;
+      const fromStop = getTripStopAtIndex(route, trip, fromIndex);
+      const toStop = getTripStopAtIndex(route, trip, toIndex);
+      const depart = fromStop.departure || fromStop.arrival ||
+        (fromIndex === 0 ? trip.depart : "");
+      const arrive = toStop.arrival || toStop.departure ||
+        (toIndex === route.stops.length - 1 ? trip.arrive : "");
 
       return {
         route,
         trip,
-        platform: trip.platforms?.[fromStation] || trip.platform,
+        platform: fromStop.track || (fromIndex === 0 ? trip.platform : ""),
         depart,
         arrive,
         from: fromStation,
         to: toStation,
         dateOffset,
         stopsCount: toIndex - fromIndex,
-        arrivalPlatform: trip.platforms?.[toStation] || "",
+        arrivalPlatform: toStop.track,
         intermediateStops: buildIntermediateStops(route, trip, fromIndex, toIndex)
       };
-    })
+    }))
+    .filter((leg) => leg.depart && leg.arrive)
     .filter(isMatchInSelectedPeriod)
     .map(markPastMatch);
+}
+
+function getTripStopAtIndex(route, trip, index) {
+  const station = route.stops[index];
+  const entry = Array.isArray(trip.stopEntries) ? trip.stopEntries[index] : null;
+  return {
+    arrival: entry?.arrival || trip.arrivalTimes?.[station] || "",
+    departure: entry?.departure || trip.departureTimes?.[station] || "",
+    track: entry?.track || trip.platforms?.[station] || ""
+  };
 }
 
 function buildTransferMatches(from, to, time, timeMode, dateOffset = 0) {
@@ -1753,10 +2040,14 @@ function sortMatchesByTime(a, b, timeMode) {
 }
 
 function buildIntermediateStops(route, trip, fromIndex, toIndex) {
-  return route.stops.slice(fromIndex + 1, toIndex).map((station) => ({
-    station,
-    time: trip.stopTimes?.[station] || trip.arrivalTimes?.[station] || trip.departureTimes?.[station] || ""
-  }));
+  return route.stops.slice(fromIndex + 1, toIndex).map((station, offset) => {
+    const entry = getTripStopAtIndex(route, trip, fromIndex + offset + 1);
+    return {
+      station,
+      time: entry.departure || entry.arrival || "",
+      platform: entry.track
+    };
+  });
 }
 
 function runsOnSelectedDay(days, dateOffset = 0) {
@@ -1782,6 +2073,7 @@ function renderRouteCard(match) {
   node.querySelector('[data-field="arrive"]').textContent = formatClockForDisplay(match.arrive);
   renderTripDates(node, match);
   renderWarnings(node, match);
+  renderTrainNotices(node, match);
 
   const duration = durationBetween(match.depart, match.arrive);
   renderRouteLine(node.querySelector(".route-line"), duration, getTransferCount(match));
@@ -1988,6 +2280,41 @@ function renderWarnings(node, match) {
       `).join("")}
     </div>
   `;
+}
+
+function renderTrainNotices(node, match) {
+  const noticeBox = node.querySelector('[data-field="notices"]');
+  if (!noticeBox) return;
+
+  const seen = new Set();
+  const noticeEntries = getMatchLegs(match).flatMap((leg) =>
+    normalizePublicTrainNotices(leg.trip.notices).flatMap((notice) => {
+      const entry = {
+        line: String(leg.route.line || "").trim(),
+        ...notice
+      };
+      const key = `${entry.line}\u0000${entry.type}\u0000${entry.text}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [entry];
+    })
+  );
+
+  noticeBox.hidden = noticeEntries.length === 0;
+  if (!noticeEntries.length) {
+    noticeBox.replaceChildren();
+    return;
+  }
+
+  noticeBox.innerHTML = noticeEntries.map((entry) => `
+    <div class="route-notice route-notice--${entry.type}">
+      <div class="route-notice-heading">
+        <span class="route-notice-icon route-notice-icon--${entry.type}" aria-hidden="true"></span>
+        <strong>${entry.type === "alert" ? "Оповещение" : "Информация"}</strong>
+      </div>
+      <p>${escapeHtml(entry.text)}</p>
+    </div>
+  `).join("");
 }
 
 function setupRouteToggle(node, hasDetails) {

@@ -37,7 +37,7 @@
             <p>Первомайские железные дороги постоянно развиваются, и мы всегда рады единомышленникам. Если вы любите поезда, цените дисциплину и хотите стать частью настоящей железнодорожной команды, мы ждём вас.</p>
           </article>
 
-          <div class="job-grid job-vacancy-grid">
+          <div class="job-grid job-vacancy-grid" data-vacancy-list>
             <article class="job-card job-vacancy-card">
               <img class="job-card-media" src="assets/img/legacy/dispatcher.jpg" alt="Дежурный по станции" loading="lazy" decoding="async">
               <div class="job-card-body">
@@ -132,19 +132,19 @@
             </div>
           </section>
 
-          <section class="job-contact-panel" aria-label="Как откликнуться">
+          <section class="job-contact-panel" aria-label="Как откликнуться" data-company-contact>
             <div>
               <h3>Как откликнуться</h3>
               <p>Если вы готовы присоединиться к нашей команде, свяжитесь с нами удобным способом.</p>
             </div>
             <div class="support-contact-list">
-              <a class="support-contact-line" href="mailto:info@mayrail.xyz">
+              <a class="support-contact-line" href="mailto:info@mayrail.xyz" data-company-email-link>
                 <span class="contact-icon contact-icon-mail" aria-hidden="true"></span>
-                <strong>info@mayrail.xyz</strong>
+                <strong data-company-email>info@mayrail.xyz</strong>
               </a>
               <div class="support-contact-line">
                 <span class="contact-icon contact-icon-headquarters" aria-hidden="true"></span>
-                <strong>Лично: директор в здании вокзала на ст. Первомайск</strong>
+                <strong data-company-location>ст. Первомайск</strong>
               </div>
             </div>
           </section>
@@ -154,6 +154,8 @@
 
     <div data-site-footer></div>
 
+    <script src="assets/js/firebase-content.js"></script>
     <script src="assets/js/layout.js"></script>
+    <script src="assets/js/site-sections.js"></script>
   </body>
 </html>

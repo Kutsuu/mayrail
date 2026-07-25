@@ -5,7 +5,7 @@ const path = require("path");
 const { exec } = require("child_process");
 
 const root = __dirname;
-const defaultPort = Number(process.env.PORT) || 8000;
+const defaultPort = Number(process.env.PORT) || 8010;
 const host = process.env.HOST || "0.0.0.0";
 const maxPortAttempts = 20;
 
@@ -27,8 +27,15 @@ const mimeTypes = {
 
 function createServer() {
   return http.createServer((request, response) => {
-    const requestUrl = new URL(request.url, "http://localhost");
-    const pathname = decodeURIComponent(requestUrl.pathname);
+    let requestUrl;
+    let pathname;
+    try {
+      requestUrl = new URL(request.url, "http://localhost");
+      pathname = decodeURIComponent(requestUrl.pathname);
+    } catch (_) {
+      sendText(response, 400, "Bad request");
+      return;
+    }
 
     if (pathname !== "/" && pathname.endsWith("/")) {
       response.writeHead(308, { Location: `${pathname.slice(0, -1)}${requestUrl.search}` });
@@ -45,9 +52,16 @@ function createServer() {
     const ext = path.extname(filePath).toLowerCase();
     response.writeHead(200, {
       "Content-Type": mimeTypes[ext] || "application/octet-stream",
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin"
     });
-    fs.createReadStream(filePath).pipe(response);
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", () => {
+      if (!response.headersSent) sendText(response, 500, "Read error");
+      else response.destroy();
+    });
+    stream.pipe(response);
   });
 }
 

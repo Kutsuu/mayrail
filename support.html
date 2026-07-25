@@ -46,7 +46,7 @@
             </article>
           </div>
 
-          <section class="support-contact-panel" aria-label="Как связаться">
+          <section class="support-contact-panel" aria-label="Как связаться" data-company-contact>
             <div>
               <h3>Как с нами связаться</h3>
               <p>Если вы хотите поддержать проект материально или обсудить другие варианты помощи, пожалуйста, свяжитесь с нами удобным способом.</p>
@@ -54,11 +54,11 @@
             <div class="support-contact-list">
               <div class="support-contact-line">
                 <span class="contact-icon contact-icon-headquarters" aria-hidden="true"></span>
-                <strong>Лично: дежурный по станции Первомайск в здании вокзала</strong>
+                <strong data-company-location>ст. Первомайск</strong>
               </div>
-              <a class="support-contact-line" href="mailto:info@mayrail.xyz">
+              <a class="support-contact-line" href="mailto:info@mayrail.xyz" data-company-email-link>
                 <span class="contact-icon contact-icon-mail" aria-hidden="true"></span>
-                <strong>info@mayrail.xyz</strong>
+                <strong data-company-email>info@mayrail.xyz</strong>
               </a>
             </div>
           </section>
@@ -68,6 +68,7 @@
 
     <div data-site-footer></div>
 
+    <script src="assets/js/firebase-content.js"></script>
     <script src="assets/js/layout.js"></script>
   </body>
 </html>

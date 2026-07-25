@@ -26,7 +26,8 @@
           <div class="hero-copy">
             <h1>На колесах проще,<br>чем на руках.</h1>
           </div>
-          <form class="route-panel route-search-panel hero-search-panel" id="route-search" data-routes-source="data/routes/" data-search-mode="redirect" data-results-page="passengers">
+          <form class="route-panel route-search-panel hero-search-panel" id="route-search" data-routes-source="firebase" data-search-mode="redirect" data-results-page="passengers">
+            <div class="public-data-warning" id="public-data-warning" role="status" hidden></div>
             <div class="field-grid">
               <label class="field station-field route-from">
                 <span class="sr-only">Откуда</span>
@@ -115,10 +116,13 @@
             <img class="route-warning-icon" src="assets/icons/warning.svg" alt="" aria-hidden="true">
             <span data-field="warning-text"></span>
           </div>
+          <div class="route-notices" data-field="notices" aria-label="Сообщения поезда" hidden></div>
         </div>
       </article>
     </template>
 
+    <script src="assets/js/firebase-content.js"></script>
+    <script src="assets/js/public-schedule.js"></script>
     <script src="data/news.js"></script>
     <script src="assets/js/layout.js"></script>
     <script src="assets/js/app.js"></script>
